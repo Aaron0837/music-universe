@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs><radialGradient id="bg"><stop stop-color="#351050"/><stop offset="1" stop-color="#05020d"/></radialGradient><filter id="g"><feGaussianBlur stdDeviation="9"/></filter></defs>
+  <rect width="1200" height="630" fill="url(#bg)"/><g fill="#b54cff" filter="url(#g)" opacity=".65"><circle cx="790" cy="300" r="120"/><circle cx="920" cy="220" r="55"/></g>
+  <g fill="#fff" opacity=".7"> <circle cx="850" cy="320" r="3"/><circle cx="1010" cy="180" r="2"/><circle cx="750" cy="180" r="2"/><circle cx="1080" cy="390" r="3"/></g>
+  <text x="70" y="90" fill="#fff" font-family="monospace" font-size="18" letter-spacing="4">MUSIC UNIVERSE</text><text x="70" y="255" fill="#fff" font-family="Arial" font-weight="800" font-size="78">DON'T JUST</text><text x="70" y="335" fill="#c76cff" font-family="Arial" font-weight="800" font-size="78">HEAR IT.</text><text x="70" y="415" fill="#fff" font-family="Arial" font-weight="800" font-size="78">SHAPE IT.</text><text x="73" y="470" fill="#c8bfd1" font-family="monospace" font-size="17">DROP IN ANY SONG. SCULPT ITS UNIVERSE.</text>
+</svg>

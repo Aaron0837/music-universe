@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#05020d" />
+    <meta name="description" content="Drop in any song and sculpt an audio-reactive universe." />
+    <title>Music Universe — Play the light</title>
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="universe" aria-label="Interactive audio-reactive universe"></canvas>
+      <canvas id="fallback" aria-label="Audio spectrum visualization" hidden></canvas>
+      <div class="ambient-wash" aria-hidden="true"></div>
+      <div class="stage-vignette" aria-hidden="true"></div>
+      <div class="grain" aria-hidden="true"></div>
+      <div id="lyricBackdrop" class="lyric-backdrop" aria-hidden="true"><span>WE TURN THE SILENCE INTO LIGHT</span><span>漂浮在声音形成的宇宙</span><span>EVERY BEAT BECOMES A STAR</span></div>
+
+      <div class="music-app ui-layer">
+        <aside class="app-sidebar">
+          <a class="app-logo" href="#"><i></i><strong>MU</strong></a>
+          <nav aria-label="Main views">
+            <button class="view-button active" data-view="discover" type="button"><b>⌂</b><span>发现音乐</span></button>
+            <button class="view-button" data-view="listen" type="button"><b>♫</b><span>正在播放</span></button>
+            <button class="view-button" data-view="visual" type="button"><b>✦</b><span>视觉宇宙</span></button>
+            <button class="view-button" data-view="dj" type="button"><b>⌘</b><span>DJ Studio</span></button>
+          </nav>
+          <div class="library-links"><small>我的音乐</small><button type="button">♡ 我喜欢的音乐</button><button type="button">◷ 最近播放</button><label for="audioFile">＋ 导入本地音乐</label><label for="lyricsFile">＋ 导入 LRC 歌词</label><input id="lyricsFile" type="file" accept=".lrc,text/plain" hidden /></div>
+          <div class="theme-switcher"><small>视觉风格</small><div><button class="theme-dot active" data-theme="cloud" title="云白"></button><button class="theme-dot" data-theme="peach" title="蜜桃"></button><button class="theme-dot" data-theme="mint" title="薄荷"></button><button class="theme-dot" data-theme="lavender" title="薰衣草"></button></div></div>
+        </aside>
+        <section class="app-main">
+          <header class="app-header"><div class="history-buttons"><button type="button">‹</button><button type="button">›</button></div><label class="search">⌕ <input placeholder="搜索音乐、歌手、歌单" /></label><label class="import-pill" for="audioFile">＋ 本地音乐</label><button id="appLangButton" class="avatar" type="button">MU</button></header>
+
+          <section class="app-view discover-view active" data-page="discover">
+            <div class="welcome"><div><p>下午好 · GOOD AFTERNOON</p><h2>今天想听些什么？</h2><span>让音乐填满此刻，也可以进入视觉宇宙重新感受它。</span></div><button id="heroDemoButton" type="button">▶ 播放今日精选</button></div>
+            <div class="section-title"><h3>为你推荐</h3><button type="button">查看全部 →</button></div>
+            <div class="playlist-grid"><button class="playlist-card demo-card" type="button"><i><b>32</b><small>AUG</small></i><strong>每日推荐</strong><span>从一首原创电子乐开始</span></button><button class="playlist-card" type="button"><i class="cover cover-1"><b>✦</b></i><strong>星际漫游</strong><span>Ambient · Electronic</span></button><button class="playlist-card" type="button"><i class="cover cover-2"><b>☁</b></i><strong>柔软晴天</strong><span>Indie · Chill</span></button><button class="playlist-card" type="button"><i class="cover cover-3"><b>∞</b></i><strong>夜色霓虹</strong><span>Future · Dance</span></button></div>
+            <div class="section-title"><h3>最近播放</h3><button type="button">播放全部</button></div>
+            <div class="song-table"><button class="song-row demo-card" type="button"><span>01</span><i class="mini-cover"></i><strong>Orbital Signal<small>Music Universe</small></strong><b>Generated Sessions</b><time>00:32</time></button><label class="song-row" for="audioFile"><span>02</span><i class="mini-cover local"></i><strong>你的本地音乐<small>点击导入</small></strong><b>仅在本机处理</b><time>—</time></label></div>
+          </section>
+
+          <section class="app-view listen-view" data-page="listen">
+            <div class="now-playing-card"><div class="album-orbit"><div class="album-disc"><i>MU</i></div></div><div class="lyrics-panel"><p>ORBITAL SIGNAL · ORIGINAL DEMO</p><h2 id="lyricTitle">把沉默变成光</h2><div id="lyrics" class="lyrics"><span data-time="0">闭上眼，让城市慢慢退场</span><span data-time="4">漂浮在声音形成的宇宙</span><span data-time="8">Every beat becomes a star</span><span data-time="12">我们穿过尚未命名的光</span><span data-time="16">Leave the noise on the other side</span><span data-time="20">让所有颜色跟随心跳</span><span data-time="24">This moment is ours to shape</span><span data-time="28">直到最后一束星光落下</span></div></div></div>
+          </section>
+
+          <section class="app-view visual-view" data-page="visual"><div class="visual-copy"><p>INTERACTIVE CANVAS</p><h2>让声音成为<br/>可以触摸的风景</h2><span>移动、拖动或点击画面，实时改变音乐宇宙。</span><button id="enterVisualButton" type="button">进入全屏视觉 ↗</button></div><div id="visualWorlds" class="visual-world-cards"></div></section>
+          <section class="app-view dj-view" data-page="dj"><div class="dj-intro"><span>PRO PERFORMANCE MODE</span><h2>DJ Studio</h2><p>双盘、四通道混音、滤波与视觉 FX。</p></div></section>
+        </section>
+
+        <footer class="player-dock"><div class="dock-track"><i class="mini-cover"></i><strong id="dockTrackName">Orbital Signal<small>Music Universe</small></strong><button type="button">♡</button></div><div class="dock-center"><div><button type="button">↶</button><button id="dockPlay" class="dock-play" type="button">▶</button><button type="button">↷</button></div><input id="dockProgress" type="range" min="0" max="1000" value="0" /></div><div class="dock-tools"><button class="dock-mode" data-view="listen" type="button">词</button><button class="dock-mode" data-view="visual" type="button">✦</button><button class="dock-mode" data-view="dj" type="button">DJ</button><span id="dockTime">00:00 / 00:32</span></div></footer>
+      </div>
+
+      <header class="topbar ui-layer">
+        <a class="brand" href="#" aria-label="Music Universe home"><i></i><span>MUSIC<br />UNIVERSE</span></a>
+        <div class="status"><span class="status-dot"></span><span id="statusText">AWAITING SIGNAL</span></div>
+        <button id="langButton" class="icon-button" type="button" aria-label="切换语言">中文</button>
+      </header>
+
+      <section id="landing" class="landing ui-layer" aria-labelledby="heroTitle">
+        <p class="kicker" data-i18n="kicker">AN AUDIO-REACTIVE INSTRUMENT</p>
+        <h1 id="heroTitle"><span data-i18n="heroA">DON'T JUST</span><br /><em data-i18n="heroB">HEAR IT.</em> <span data-i18n="heroC">SHAPE IT.</span></h1>
+        <p class="lede" data-i18n="lede">Drop in any song. Move through its frequencies. Turn sound into a universe only you can make.</p>
+        <div class="launch-actions">
+          <label class="primary-action" for="audioFile"><span data-i18n="upload">DROP OR CHOOSE A TRACK</span><b>↗</b></label>
+          <input id="audioFile" type="file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp4,audio/aac,.m4a" hidden />
+          <button id="demoButton" class="text-action" type="button"><i>▶</i><span data-i18n="demo">PLAY GENERATED DEMO</span></button>
+        </div>
+        <p class="privacy"><span>LOCAL ONLY</span> · <span data-i18n="privacy">YOUR AUDIO NEVER LEAVES THIS DEVICE</span></p>
+      </section>
+
+      <aside class="coordinates ui-layer" aria-hidden="true">
+        <span>FREQ / <b id="freqReadout">000.0</b></span><span>ENERGY / <b id="energyReadout">0.00</b></span>
+      </aside>
+
+      <div id="dropZone" class="drop-zone"><strong data-i18n="drop">RELEASE TO ENTER THE UNIVERSE</strong></div>
+
+      <section id="player" class="player ui-layer" aria-label="Immersive DJ console">
+        <div class="console-glow" aria-hidden="true"></div>
+        <section class="dj-game" aria-label="DJ rhythm game">
+          <div class="game-head"><div class="game-modes"><button class="active" data-game-mode="bpm" type="button">01 BPM MATCH</button><button data-game-mode="rhythm" type="button">02 DRUM GRID</button><button data-game-mode="harmony" type="button">03 HARMONY</button></div><div class="game-score"><span>SCORE <b id="gameScore">000000</b></span><span>COMBO <b id="gameCombo">×0</b></span></div></div>
+          <div id="noteHighway" class="note-highway"><i class="judge-line"></i><div class="lane" data-key="A"><kbd>A</kbd></div><div class="lane" data-key="S"><kbd>S</kbd></div><div class="lane" data-key="D"><kbd>D</kbd></div><div class="lane" data-key="F"><kbd>F</kbd></div><strong id="gameCallout">SELECT A MODE · PRESS START</strong></div>
+          <div class="game-footer"><span id="gameObjective">Match the target tempo: 120 BPM</span><div class="harmony-keys"><button data-chord="0" type="button">C MAJ</button><button data-chord="1" type="button">A MIN</button><button data-chord="2" type="button">F MAJ</button><button data-chord="3" type="button">G MAJ</button></div><button id="startChallenge" type="button">START CHALLENGE</button></div>
+        </section>
+        <div class="deck deck-a">
+          <div class="deck-label"><span>DECK A</span><i>LIVE</i></div>
+          <div class="deck-top"><button type="button">LOOP IN</button><button type="button">LOOP OUT</button><span>BEAT SYNC</span></div>
+          <button id="platterA" class="platter" type="button" aria-label="Scratch deck A">
+            <span class="platter-rings"></span><span class="platter-label"><b>A</b><small>MU—01</small></span><i class="playhead"></i>
+          </button>
+          <div class="performance-pads" aria-label="Deck A performance pads"><button type="button">HOT CUE 1</button><button type="button">HOT CUE 2</button><button type="button">HOT CUE 3</button><button type="button">HOT CUE 4</button><button type="button">PAD FX 1</button><button type="button">PAD FX 2</button><button type="button">BEAT LOOP</button><button type="button">SAMPLER</button></div>
+          <div class="deck-actions"><button id="cueButton" type="button">CUE</button><button id="playButton" class="deck-play" type="button" aria-label="Play or pause">▶</button><span class="bpm"><small>BPM</small><b id="bpmReadout">120</b></span></div>
+          <label class="tempo"><span>BPM</span><input id="tempoA" type="range" min="80" max="160" value="120" orient="vertical" /><b id="tempoValue">120</b></label>
+        </div>
+
+        <div class="mixer">
+          <div class="mixer-screen"><div class="waveform" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="screen-data"><span>MASTER</span><b>MU / LIVE PERFORMANCE</b><span>4 DECK</span></div></div>
+          <div class="track-line">
+            <div class="track-meta"><span>NOW PLAYING</span><strong id="trackName">NO SIGNAL</strong><small id="worldDescription">Choose a track to begin</small></div>
+            <span id="timeLabel" class="time">00:00 / 00:00</span>
+          </div>
+          <input id="progress" class="progress" type="range" min="0" max="1000" value="0" aria-label="Playback position" />
+          <div class="mixer-channels" aria-label="Four channel mixer">
+            <div class="channel"><b>1</b><i class="mini-knob"></i><i class="mini-knob"></i><i class="mini-knob"></i><input type="range" min="0" max="1" value=".72" aria-label="Channel 1 volume" /></div>
+            <div class="channel active"><b>2</b><i class="mini-knob"></i><i class="mini-knob"></i><i class="mini-knob"></i><input type="range" min="0" max="1" value=".88" aria-label="Channel 2 volume" /></div>
+            <div class="channel"><b>3</b><i class="mini-knob"></i><i class="mini-knob"></i><i class="mini-knob"></i><input type="range" min="0" max="1" value=".56" aria-label="Channel 3 volume" /></div>
+            <div class="channel"><b>4</b><i class="mini-knob"></i><i class="mini-knob"></i><i class="mini-knob"></i><input type="range" min="0" max="1" value=".64" aria-label="Channel 4 volume" /></div>
+          </div>
+          <div class="channel-strip">
+            <label class="knob-control"><span>FILTER</span><input id="filter" class="knob-input" type="range" min="0" max="1" step="0.01" value="1" /><i class="knob" id="filterKnob"></i></label>
+            <div class="vu" aria-label="Audio level"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <label class="knob-control"><span data-i18n="sensitivity">SENSE</span><input id="sensitivity" class="knob-input" type="range" min="0.5" max="2" step="0.05" value="1" /><i class="knob" id="senseKnob"></i></label>
+          </div>
+          <label class="crossfader-label"><span>DECK A</span><input id="crossfader" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="Visual crossfader" /><span>DECK B</span></label>
+          <div id="worlds" class="worlds" role="tablist" aria-label="Visual worlds"></div>
+        </div>
+
+        <div class="deck deck-b">
+          <div class="deck-label"><span>DECK B</span><i>VISUAL FX</i></div>
+          <div class="deck-top"><button type="button">BEAT FX</button><button type="button">REVERB</button><span>QUANTIZE</span></div>
+          <button id="platterB" class="platter" type="button" aria-label="Scratch visual deck B">
+            <span class="platter-rings"></span><span class="platter-label"><b>B</b><small>FX—02</small></span><i class="playhead"></i>
+          </button>
+          <div class="performance-pads" aria-label="Deck B performance pads"><button type="button">NEBULA</button><button type="button">GRAVITY</button><button type="button">BLOOM</button><button type="button">STROBE</button><button type="button">PULSE</button><button type="button">TRAIL</button><button type="button">FREEZE</button><button type="button">RESET</button></div>
+          <div class="deck-actions fx-row"><button id="burstButton" type="button">PULSE</button><label><span data-i18n="hue">HUE</span><input id="hue" type="range" min="0" max="360" value="282" /></label></div>
+          <label class="tempo"><span>FX DEPTH</span><input id="tempoB" type="range" min="0" max="100" value="64" orient="vertical" /><b>64%</b></label>
+        </div>
+
+        <div class="console-footer">
+          <label><span data-i18n="volume">VOL</span><input id="volume" type="range" min="0" max="1" step="0.01" value="0.78" /></label>
+          <div class="utility-actions"><button id="reducedButton" type="button" aria-pressed="false" title="Reduced motion">≈</button><button id="resetButton" type="button" title="Reset world">↻</button><button id="fullscreenButton" type="button" title="Fullscreen">⛶</button></div>
+        </div>
+      </section>
+
+      <div id="message" class="message" role="status" aria-live="polite"></div>
+      <div class="shortcuts ui-layer"><span>1—3 <b>WORLD</b></span><span>SPACE <b>PLAY</b></span><span>F <b>FULL</b></span><span>H <b>HIDE UI</b></span></div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
