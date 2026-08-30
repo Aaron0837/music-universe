@@ -1,5 +1,5 @@
 import type { AudioFrame } from '../types';
-import { averageBand, calculateRms, detectTransient, smooth } from './analysis';
+import { averageBand, calculateRms, detectTransient, estimateSourceBpm, smooth, tempoRate } from './analysis';
 
 type Listener = (state: { playing: boolean; name: string; duration: number }) => void;
 
@@ -17,8 +17,15 @@ export class AudioEngine {
   private smoothBands = { bass: 0, mid: 0, treble: 0, rms: 0 };
   private energyAverage = 0;
   private pulse = 0;
-  private demoStartedAt = 0;
+  private demoRateStartedAt = 0;
+  private demoPositionOffset = 0;
   private demoPlaying = false;
+  private volume = 0.78;
+  private targetTempo = 120;
+  private sourceTempo = 120;
+  private rate = 1;
+  private lastTempoBeat = 0;
+  private readonly tempoIntervals: number[] = [];
   private readonly timeDomain = new Uint8Array(1024);
   private readonly frequencyBins = new Uint8Array(512);
 
@@ -31,7 +38,7 @@ export class AudioEngine {
       this.analyser.fftSize = 1024;
       this.analyser.smoothingTimeConstant = 0.76;
       this.gain = this.context.createGain();
-      this.gain.gain.value = 0.78;
+      this.gain.gain.value = this.volume;
       this.filter = this.context.createBiquadFilter();
       this.filter.type = 'lowpass';
       this.filter.frequency.value = 22000;
@@ -49,6 +56,7 @@ export class AudioEngine {
     if (!this.element) {
       this.element = new Audio();
       this.element.crossOrigin = 'anonymous';
+      this.element.preservesPitch = true;
       this.source = this.context!.createMediaElementSource(this.element);
       this.source.connect(this.gain!);
       this.element.addEventListener('play', () => this.emit());
@@ -60,6 +68,12 @@ export class AudioEngine {
     this.objectUrl = URL.createObjectURL(file);
     this.element.src = this.objectUrl;
     this.element.dataset.name = file.name.replace(/\.[^.]+$/, '');
+    this.sourceTempo = 120;
+    this.rate = tempoRate(this.targetTempo, this.sourceTempo);
+    this.element.playbackRate = this.rate;
+    this.element.preservesPitch = true;
+    this.lastTempoBeat = 0;
+    this.tempoIntervals.length = 0;
     try { await this.element.play(); } catch { throw new Error('DECODE_FAILED'); }
     this.emit();
   }
@@ -72,8 +86,15 @@ export class AudioEngine {
     const duration = 32; const rate = context.sampleRate; const buffer = context.createBuffer(2, duration * rate, rate);
     const roots = [110, 130.81, 146.83, 164.81]; const melody = [440, 523.25, 659.25, 587.33, 493.88, 659.25, 783.99, 587.33];
     for (let channel = 0; channel < 2; channel++) { const data = buffer.getChannelData(channel); for (let i = 0; i < data.length; i++) { const t = i / rate; const beat = t % .5; const bar = Math.floor(t / 4) % 4; const step = Math.floor(t * 2) % 8; const kick = Math.sin(2 * Math.PI * (68 - beat * 55) * beat) * Math.exp(-beat * 19); const hatPhase = t % .25; const hat = (Math.sin(i * 12.9898) * .5 + Math.sin(i * 31.771) * .5) * Math.exp(-hatPhase * 55) * .055; const root = roots[bar]; const padEnv = .5 - .5 * Math.cos(Math.min(1, (t % 4) / .7) * Math.PI); const pad = (Math.sin(2 * Math.PI * root * 2 * t) + Math.sin(2 * Math.PI * root * 2.5 * t) + Math.sin(2 * Math.PI * root * 3 * t)) * .055 * padEnv; const leadPhase = t % .5; const lead = Math.sin(2 * Math.PI * melody[step] * t) * Math.exp(-leadPhase * 5) * .12; const bass = Math.tanh(Math.sin(2 * Math.PI * root * t) * 1.7) * .13; data[i] = Math.tanh((kick * .42 + hat + pad + lead + bass) * 1.25) * (channel ? .94 : 1); } }
-    const source = context.createBufferSource(); source.buffer = buffer; source.loop = true; source.connect(this.gain!); source.start(); this.demoBufferSource = source;
-    this.demoStartedAt = context.currentTime;
+    const source = context.createBufferSource(); source.buffer = buffer; source.loop = true; source.connect(this.gain!);
+    this.sourceTempo = 120;
+    this.rate = tempoRate(this.targetTempo, this.sourceTempo);
+    source.playbackRate.value = this.rate;
+    source.start(); this.demoBufferSource = source;
+    this.demoRateStartedAt = context.currentTime;
+    this.demoPositionOffset = 0;
+    this.lastTempoBeat = 0;
+    this.tempoIntervals.length = 0;
     this.demoPlaying = true;
     if (context.state !== 'running') await context.resume();
     this.emit();
@@ -94,17 +115,31 @@ export class AudioEngine {
     if (this.element.paused) await this.element.play(); else this.element.pause();
   }
 
-  setVolume(value: number): void { if (this.gain && this.context) this.gain.gain.setTargetAtTime(value, this.context.currentTime, 0.02); }
+  setVolume(value: number): void { this.volume = Math.max(0, Math.min(1, value)); if (this.gain && this.context) this.gain.gain.setTargetAtTime(this.volume, this.context.currentTime, 0.02); }
   setFilter(value: number): void { if (this.filter && this.context) this.filter.frequency.setTargetAtTime(180 + Math.pow(value, 2.4) * 21820, this.context.currentTime, 0.025); }
-  setBpm(bpm: number): void { if (this.demoBufferSource) this.demoBufferSource.playbackRate.value = Math.max(.65, Math.min(1.4, bpm / 120)); }
+  setBpm(bpm: number): void {
+    this.targetTempo = Math.max(80, Math.min(180, bpm));
+    if (this.demoPlaying && this.context) {
+      this.demoPositionOffset = this.demoPosition;
+      this.demoRateStartedAt = this.context.currentTime;
+    }
+    this.rate = tempoRate(this.targetTempo, this.sourceTempo);
+    if (this.demoBufferSource && this.context) this.demoBufferSource.playbackRate.setTargetAtTime(this.rate, this.context.currentTime, 0.025);
+    if (this.element) { this.element.playbackRate = this.rate; this.element.preservesPitch = true; }
+  }
   async triggerDrum(kind: number): Promise<void> { await this.ensureContext(); const context = this.context!; const osc = context.createOscillator(); const gain = context.createGain(); const now = context.currentTime; const frequencies = [58, 190, 520, 920]; osc.type = kind === 0 ? 'sine' : kind === 1 ? 'triangle' : 'square'; osc.frequency.setValueAtTime(frequencies[kind] ?? 220, now); osc.frequency.exponentialRampToValueAtTime(Math.max(45, frequencies[kind] * .35), now + .11); gain.gain.setValueAtTime(kind > 1 ? .07 : .22, now); gain.gain.exponentialRampToValueAtTime(.001, now + (kind === 0 ? .26 : .12)); osc.connect(gain).connect(this.gain!); osc.start(now); osc.stop(now + .28); this.demoNodes.push(osc); }
   async triggerHarmony(chord: number): Promise<void> { await this.ensureContext(); const context = this.context!; const roots = [261.63, 220, 174.61, 196]; const qualities = [[1,1.25,1.5],[1,1.2,1.5],[1,1.25,1.5],[1,1.25,1.5]]; const now = context.currentTime; qualities[chord % 4].forEach((ratio) => { const osc = context.createOscillator(); const gain = context.createGain(); osc.type = 'sine'; osc.frequency.value = roots[chord % 4] * ratio; gain.gain.setValueAtTime(.001, now); gain.gain.exponentialRampToValueAtTime(.075, now + .04); gain.gain.exponentialRampToValueAtTime(.001, now + .75); osc.connect(gain).connect(this.gain!); osc.start(now); osc.stop(now + .8); this.demoNodes.push(osc); }); }
   async triggerPerfect(): Promise<void> { await this.ensureContext(); const context = this.context!; const now = context.currentTime; const impact = context.createGain(); impact.gain.value = .82; impact.connect(this.gain!); [[96,38,.42,'sine'],[210,62,.24,'triangle']].forEach(([from,to,level,type]) => { const osc = context.createOscillator(); const gain = context.createGain(); osc.type = type as OscillatorType; osc.frequency.setValueAtTime(from as number, now); osc.frequency.exponentialRampToValueAtTime(to as number, now + .18); gain.gain.setValueAtTime(level as number, now); gain.gain.exponentialRampToValueAtTime(.001, now + .38); osc.connect(gain).connect(impact); osc.start(now); osc.stop(now + .4); this.demoNodes.push(osc); }); const length = Math.floor(context.sampleRate * .18); const noiseBuffer = context.createBuffer(1, length, context.sampleRate); const noise = noiseBuffer.getChannelData(0); for (let i = 0; i < length; i++) noise[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2); const source = context.createBufferSource(); const highpass = context.createBiquadFilter(); const noiseGain = context.createGain(); source.buffer = noiseBuffer; highpass.type = 'highpass'; highpass.frequency.value = 1200; noiseGain.gain.setValueAtTime(.18, now); noiseGain.gain.exponentialRampToValueAtTime(.001, now + .18); source.connect(highpass).connect(noiseGain).connect(impact); source.start(now); source.stop(now + .2); this.demoNodes.push(source); }
   seek(fraction: number): void { if (this.element && Number.isFinite(this.element.duration)) this.element.currentTime = fraction * this.element.duration; }
-  get currentTime(): number { return this.demoPlaying && this.context ? (this.context.currentTime - this.demoStartedAt) % 32 : this.element?.currentTime ?? 0; }
+  private get demoPosition(): number { return this.context ? (this.demoPositionOffset + (this.context.currentTime - this.demoRateStartedAt) * this.rate) % 32 : 0; }
+  get currentTime(): number { return this.demoPlaying ? this.demoPosition : this.element?.currentTime ?? 0; }
   get duration(): number { return this.demoPlaying ? 32 : Number.isFinite(this.element?.duration) ? this.element!.duration : 0; }
   get playing(): boolean { return this.demoPlaying || Boolean(this.element && !this.element.paused); }
   get name(): string { return this.demoPlaying ? 'ORBITAL SIGNAL / GENERATED' : this.element?.dataset.name ?? 'NO SIGNAL'; }
+  get detectedBpm(): number { return Math.round(this.sourceTempo); }
+  get targetBpm(): number { return Math.round(this.targetTempo); }
+  get playbackRate(): number { return this.rate; }
+  get masterVolume(): number { return this.volume; }
 
   frame(delta: number): AudioFrame {
     this.analyser?.getByteTimeDomainData(this.timeDomain);
@@ -121,6 +156,19 @@ export class AudioEngine {
     this.energyAverage += (energy - this.energyAverage) * Math.min(1, delta * 2.5);
     const transient = detectTransient(energy, this.energyAverage);
     this.pulse = Math.max(transient, this.pulse - delta * 2.2);
+    const now = performance.now();
+    if (!this.demoPlaying && transient > .58 && now - this.lastTempoBeat > 250) {
+      if (this.lastTempoBeat) {
+        this.tempoIntervals.push(now - this.lastTempoBeat);
+        if (this.tempoIntervals.length > 12) this.tempoIntervals.shift();
+        const estimate = estimateSourceBpm(this.tempoIntervals, this.rate);
+        if (estimate) {
+          this.sourceTempo += (estimate - this.sourceTempo) * .22;
+          this.setBpm(this.targetTempo);
+        }
+      }
+      this.lastTempoBeat = now;
+    }
     return { timeDomain: this.timeDomain, frequencyBins: this.frequencyBins, ...this.smoothBands, transient, beatPulse: this.pulse };
   }
 

@@ -76,11 +76,25 @@
 
       <section id="player" class="player ui-layer" aria-label="Immersive DJ console">
         <div class="console-glow" aria-hidden="true"></div>
-        <section class="dj-game" aria-label="DJ rhythm game">
-          <div class="game-head"><div class="game-modes"><button class="active" data-game-mode="bpm" type="button">01 BPM MATCH</button><button data-game-mode="rhythm" type="button">02 DRUM GRID</button><button data-game-mode="harmony" type="button">03 HARMONY</button></div><div class="game-score"><span>SCORE <b id="gameScore">000000</b></span><span>COMBO <b id="gameCombo">×0</b></span></div></div>
-          <div id="noteHighway" class="note-highway"><i class="judge-line"></i><div class="lane" data-key="A"><kbd>A</kbd></div><div class="lane" data-key="S"><kbd>S</kbd></div><div class="lane" data-key="D"><kbd>D</kbd></div><div class="lane" data-key="F"><kbd>F</kbd></div><strong id="gameCallout">SELECT A MODE · PRESS START</strong></div>
-          <div class="game-footer"><span id="gameObjective">Match the target tempo: 120 BPM</span><div class="harmony-keys"><button data-chord="0" type="button">C MAJ</button><button data-chord="1" type="button">A MIN</button><button data-chord="2" type="button">F MAJ</button><button data-chord="3" type="button">G MAJ</button></div><button id="startChallenge" type="button">START CHALLENGE</button></div>
-        </section>
+        <div class="dj-hero">
+          <label class="hero-control tempo-control" for="tempoA">
+            <span class="control-kicker">TEMPO ENGINE</span>
+            <input id="tempoA" class="hero-knob-input" type="range" min="80" max="180" value="120" aria-label="Target BPM" />
+            <span id="tempoKnob" class="hero-knob" aria-hidden="true"><i></i><strong id="tempoValue">120</strong><small>BPM</small></span>
+            <output id="sourceBpm">SOURCE · 120 BPM</output>
+          </label>
+          <section class="dj-game" aria-label="DJ rhythm game">
+            <div class="game-head"><div class="game-modes"><button data-game-mode="bpm" type="button">01 BPM MATCH</button><button class="active" data-game-mode="rhythm" type="button">02 DRUM GRID</button><button data-game-mode="harmony" type="button">03 HARMONY</button></div><div class="game-score"><span>SCORE <b id="gameScore">000000</b></span><span>COMBO <b id="gameCombo">×0</b></span></div></div>
+            <div id="noteHighway" class="note-highway"><i class="judge-line"></i><button class="lane" data-lane="0" data-key="A" type="button" aria-label="Hit lane A"><kbd>A</kbd></button><button class="lane" data-lane="1" data-key="S" type="button" aria-label="Hit lane S"><kbd>S</kbd></button><button class="lane" data-lane="2" data-key="D" type="button" aria-label="Hit lane D"><kbd>D</kbd></button><button class="lane" data-lane="3" data-key="F" type="button" aria-label="Hit lane F"><kbd>F</kbd></button><strong id="gameCallout">PRESS START TO DROP IN</strong></div>
+            <div class="game-footer"><span id="gameObjective">Hit A · S · D · F with the live beat</span><div class="harmony-keys"><button data-chord="0" type="button">C MAJ</button><button data-chord="1" type="button">A MIN</button><button data-chord="2" type="button">F MAJ</button><button data-chord="3" type="button">G MAJ</button></div><button id="startChallenge" type="button">START CHALLENGE</button></div>
+          </section>
+          <label class="hero-control volume-control" for="volume">
+            <span class="control-kicker">MASTER OUTPUT</span>
+            <input id="volume" class="hero-knob-input" type="range" min="0" max="1" step="0.01" value="0.78" aria-label="Master volume" />
+            <span id="volumeKnob" class="hero-knob" aria-hidden="true"><i></i><strong id="volumeValue">78</strong><small>VOL %</small></span>
+            <output id="levelOutput">OUTPUT · 78%</output>
+          </label>
+        </div>
         <div class="deck deck-a">
           <div class="deck-label"><span>DECK A</span><i>LIVE</i></div>
           <div class="deck-top"><button type="button">LOOP IN</button><button type="button">LOOP OUT</button><span>BEAT SYNC</span></div>
@@ -89,7 +103,6 @@
           </button>
           <div class="performance-pads" aria-label="Deck A performance pads"><button type="button">HOT CUE 1</button><button type="button">HOT CUE 2</button><button type="button">HOT CUE 3</button><button type="button">HOT CUE 4</button><button type="button">PAD FX 1</button><button type="button">PAD FX 2</button><button type="button">BEAT LOOP</button><button type="button">SAMPLER</button></div>
           <div class="deck-actions"><button id="cueButton" type="button">CUE</button><button id="playButton" class="deck-play" type="button" aria-label="Play or pause">▶</button><span class="bpm"><small>BPM</small><b id="bpmReadout">120</b></span></div>
-          <label class="tempo"><span>BPM</span><input id="tempoA" type="range" min="80" max="160" value="120" orient="vertical" /><b id="tempoValue">120</b></label>
         </div>
 
         <div class="mixer">
@@ -125,10 +138,7 @@
           <label class="tempo"><span>FX DEPTH</span><input id="tempoB" type="range" min="0" max="100" value="64" orient="vertical" /><b>64%</b></label>
         </div>
 
-        <div class="console-footer">
-          <label><span data-i18n="volume">VOL</span><input id="volume" type="range" min="0" max="1" step="0.01" value="0.78" /></label>
-          <div class="utility-actions"><button id="reducedButton" type="button" aria-pressed="false" title="Reduced motion">≈</button><button id="resetButton" type="button" title="Reset world">↻</button><button id="fullscreenButton" type="button" title="Fullscreen">⛶</button></div>
-        </div>
+        <div class="console-footer"><div class="utility-actions"><button id="reducedButton" type="button" aria-pressed="false" title="Reduced motion">≈</button><button id="resetButton" type="button" title="Reset world">↻</button><button id="fullscreenButton" type="button" title="Fullscreen">⛶</button></div></div>
       </section>
 
       <div id="message" class="message" role="status" aria-live="polite"></div>

@@ -22,3 +22,24 @@ export function smooth(previous: number, next: number, attack = 0.38, release = 
 export function detectTransient(energy: number, movingAverage: number): number {
   return Math.max(0, Math.min(1, (energy - movingAverage - 0.035) * 7));
 }
+
+export function normalizeBpm(value: number, minimum = 70, maximum = 180): number {
+  if (!Number.isFinite(value) || value <= 0) return 120;
+  let bpm = value;
+  while (bpm < minimum) bpm *= 2;
+  while (bpm > maximum) bpm /= 2;
+  return Math.round(bpm * 10) / 10;
+}
+
+export function estimateSourceBpm(intervalsMs: readonly number[], playbackRate = 1): number | undefined {
+  const usable = intervalsMs.filter((value) => Number.isFinite(value) && value >= 250 && value <= 2000);
+  if (usable.length < 3) return undefined;
+  const sorted = [...usable].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  return normalizeBpm((60000 / median) / Math.max(0.01, playbackRate));
+}
+
+export function tempoRate(targetBpm: number, sourceBpm: number): number {
+  return Math.max(0.65, Math.min(1.5, targetBpm / Math.max(1, sourceBpm)));
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { averageBand, calculateRms, detectTransient, smooth } from './analysis';
+import { averageBand, calculateRms, detectTransient, estimateSourceBpm, normalizeBpm, smooth, tempoRate } from './analysis';
 
 describe('audio analysis', () => {
   it('normalizes frequency bands to zero through one', () => {
@@ -17,5 +17,14 @@ describe('audio analysis', () => {
   it('only emits a transient above the moving baseline', () => {
     expect(detectTransient(.2, .2)).toBe(0);
     expect(detectTransient(.6, .2)).toBeGreaterThan(.9);
+  });
+  it('normalizes tempo estimates and compensates for playback rate', () => {
+    expect(normalizeBpm(240)).toBe(120);
+    expect(estimateSourceBpm([468, 470, 469, 471], 1)).toBeCloseTo(128, 0);
+    expect(estimateSourceBpm([390, 391, 389, 390], 1.25)).toBeCloseTo(123, 0);
+  });
+  it('clamps tempo playback to a safe browser range', () => {
+    expect(tempoRate(180, 120)).toBe(1.5);
+    expect(tempoRate(80, 160)).toBe(.65);
   });
 });
