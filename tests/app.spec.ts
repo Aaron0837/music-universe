@@ -1,35 +1,45 @@
 import { expect, test } from '@playwright/test';
 
-test('launches the generated demo and switches worlds', async ({ page }) => {
+test('plays an audible generated demo and opens the full DJ workspace', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: '今天想听些什么？' })).toBeVisible();
-  await page.locator('#heroDemoButton').click();
-  await expect(page.locator('body')).toHaveAttribute('data-view', 'listen');
-  await expect(page.locator('#dockTime')).not.toHaveText('00:00 / 00:32');
-  await page.getByRole('button', { name: /DJ Studio/ }).click();
-  await expect(page.locator('#player')).toHaveClass(/visible/);
-  await expect(page.locator('[data-game-mode="rhythm"]')).toHaveClass(/active/);
-  const tempoKnob = await page.locator('#tempoKnob').boundingBox();
-  const volumeKnob = await page.locator('#volumeKnob').boundingBox();
-  expect(tempoKnob?.width).toBeGreaterThanOrEqual(110);
-  expect(volumeKnob?.width).toBeGreaterThanOrEqual(110);
-  await page.locator('#tempoA').evaluate((element) => { const input = element as HTMLInputElement; input.value = '132'; input.dispatchEvent(new Event('input', { bubbles: true })); });
-  await page.locator('#volume').evaluate((element) => { const input = element as HTMLInputElement; input.value = '.4'; input.dispatchEvent(new Event('input', { bubbles: true })); });
-  await expect(page.locator('#tempoValue')).toHaveText('132');
-  await expect(page.locator('#levelOutput')).toHaveText('OUTPUT · 40%');
-  await expect(page.locator('#sourceBpm')).toContainText('1.10×');
-  await page.locator('#startChallenge').click();
-  await expect(page.locator('.game-note').first()).toBeVisible({ timeout: 4000 });
-  await expect(page.locator('.note-highway .lane').first()).toHaveAttribute('aria-label', 'Hit lane A');
-  await page.getByRole('tab', { name: /GRAVITY WELL/ }).click();
-  await expect(page.getByRole('tab', { name: /GRAVITY WELL/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('heading', { name: /让每一首歌/ })).toBeVisible();
+  await page.getByRole('button', { name: '播放原创示例', exact: true }).first().click();
+  await expect(page.getByText('Orbital Signal', { exact: true })).toBeVisible();
+  await expect.poll(async () => Number(await page.locator('.waveform-canvas--compact').getAttribute('data-rms'))).toBeGreaterThan(0.01);
+
+  await page.getByRole('button', { name: 'DJ 台 PRO', exact: true }).click();
+  await expect(page.getByTestId('deck-a')).toBeVisible();
+  await expect(page.getByTestId('deck-b')).toBeVisible();
+  await expect(page.getByTestId('rhythm-game')).toBeVisible();
+  const game = await page.getByTestId('rhythm-game').boundingBox();
+  expect(game?.width).toBeGreaterThan(390);
+
+  await page.getByTestId('crossfader').fill('0.7');
+  await expect(page.getByTestId('crossfader')).toHaveValue('0.7');
+  await page.getByRole('button', { name: '开始挑战' }).click();
+  await expect(page.locator('.game-note').first()).toBeVisible({ timeout: 2500 });
 });
 
-test('language and reduced-motion controls are keyboard accessible', async ({ page }) => {
+test('imports an audio file locally and restores it after reload', async ({ page }) => {
   await page.goto('/');
-  await page.locator('[data-theme="mint"]').click();
-  await expect(page.locator('body')).toHaveAttribute('data-theme', 'mint');
-  await page.getByRole('button', { name: /DJ Studio/ }).click();
-  await page.locator('#reducedButton').click();
-  await expect(page.locator('#reducedButton')).toHaveAttribute('aria-pressed', 'true');
+  const chooserPromise = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: '导入本地音乐' }).first().click();
+  const chooser = await chooserPromise;
+  const header = Buffer.from('RIFF$\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x40\x1f\x00\x00\x80>\x00\x00\x02\x00\x10\x00data\x00\x00\x00\x00', 'binary');
+  await chooser.setFiles({ name: 'Local Signal.wav', mimeType: 'audio/wav', buffer: header });
+  await page.getByRole('button', { name: '曲库', exact: true }).click();
+  await expect(page.getByText('Local Signal', { exact: true })).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: '曲库', exact: true }).click();
+  await expect(page.getByText('Local Signal', { exact: true })).toBeVisible();
+});
+
+test('switches theme and lazy-loads visual worlds', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '切换明暗主题' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('button', { name: '可视化' }).click();
+  await expect(page.getByRole('heading', { name: '看见音乐正在发生' })).toBeVisible();
+  await page.getByRole('button', { name: /Nebula/ }).click();
+  await expect(page.locator('.visual-canvas')).toBeVisible();
 });
