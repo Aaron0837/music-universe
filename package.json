@@ -11,6 +11,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@soundtouchjs/audio-worklet": "^2.1.1",
     "@tailwindcss/vite": "^4.3.3",
     "dexie": "^4.4.5",
     "lucide-react": "^1.40.0",
@@ -35,6 +36,7 @@
     "jsdom": "^30.0.1",
     "typescript": "^5.9.2",
     "vite": "^7.1.3",
+    "vite-plugin-pwa": "^1.3.0",
     "vitest": "^3.2.4"
   }
 }

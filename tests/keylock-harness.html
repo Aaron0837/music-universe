@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="UTF-8" /><title>Key lock verification</title></head>
+  <body>
+    <pre id="out">running…</pre>
+    <script type="module">
+      import { probePitch, probePlainRate } from '/src/audio/keylock/verifyKeyLock.ts';
+      async function run() {
+        return {
+          'plain@1.0': await probePlainRate(1.0),
+          'plain@1.5': await probePlainRate(1.5),
+          'locked@1.0': await probePitch(1.0, 0),
+          'locked@1.5': await probePitch(1.5, 0),
+          'locked@0.75': await probePitch(0.75, 0),
+          'locked@1.5+2st': await probePitch(1.5, 2),
+          'locked@1.0+12st': await probePitch(1.0, 12),
+        };
+      }
+      try {
+        const results = await run();
+        window.__keyLockResult = results;
+        document.getElementById('out').textContent = JSON.stringify(results, null, 2);
+      } catch (error) {
+        window.__keyLockError = String((error && error.stack) || error);
+        document.getElementById('out').textContent = 'ERROR: ' + window.__keyLockError;
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Music Universe">
+  <defs>
+    <radialGradient id="sky" cx="50%" cy="42%" r="75%">
+      <stop offset="0%" stop-color="#2c5b49" />
+      <stop offset="60%" stop-color="#1d3b30" />
+      <stop offset="100%" stop-color="#14261f" />
+    </radialGradient>
+    <linearGradient id="disc" x1="18%" y1="10%" x2="82%" y2="92%">
+      <stop offset="0%" stop-color="#f2fbf5" />
+      <stop offset="55%" stop-color="#bfe4cd" />
+      <stop offset="100%" stop-color="#7fb694" />
+    </linearGradient>
+    <linearGradient id="orbit" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a2d4b8" />
+      <stop offset="100%" stop-color="#6ea98a" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#sky)" />
+  <g transform="rotate(-24 256 256)">
+    <ellipse cx="256" cy="256" rx="186" ry="74" fill="none" stroke="url(#orbit)" stroke-width="14" opacity="0.75" />
+    <circle cx="118" cy="212" r="19" fill="#eafaef" />
+    <circle cx="392" cy="300" r="13" fill="#cdeed8" />
+  </g>
+  <circle cx="256" cy="256" r="118" fill="url(#disc)" />
+  <circle cx="256" cy="256" r="96" fill="none" stroke="#245b45" stroke-width="4" opacity="0.28" />
+  <circle cx="256" cy="256" r="72" fill="none" stroke="#245b45" stroke-width="4" opacity="0.22" />
+  <circle cx="256" cy="256" r="48" fill="none" stroke="#245b45" stroke-width="4" opacity="0.18" />
+  <circle cx="256" cy="256" r="27" fill="#245b45" />
+  <circle cx="256" cy="256" r="9" fill="#eafaef" />
+</svg>

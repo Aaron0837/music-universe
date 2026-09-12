@@ -36,6 +36,13 @@ export interface Playlist {
   createdAt: number;
 }
 
+/** The playlist currently playing on a deck, and how far it has got. */
+export interface DeckQueue {
+  trackIds: string[];
+  deck: DeckId;
+  index: number;
+}
+
 export interface DeckSnapshot {
   trackId?: string;
   playing: boolean;
@@ -45,6 +52,10 @@ export interface DeckSnapshot {
   bpm: number;
   sourceBpm: number;
   keyShift: number;
+  /** When on, tempo changes no longer move pitch; Harmony becomes a pure key change. */
+  keyLock: boolean;
+  /** Whether this browser can run the AudioWorklet that implements key lock. */
+  keyLockAvailable: boolean;
   low: number;
   mid: number;
   high: number;

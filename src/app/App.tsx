@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { getMixer, peekMixer } from '../audio/engine/runtime';
+import { advanceQueue } from '../playlists/queue';
 import { usePreferences } from '../stores/usePreferences';
 import { libraryRepository } from '../data/WebLibraryRepository';
 import { useAppStore } from '../stores/useAppStore';
@@ -43,6 +44,9 @@ export function App() {
       if (!subscribed) {
         unsubscribeA = mixer.decks.A.onSnapshot((snapshot) => updateDeck('A', snapshot));
         unsubscribeB = mixer.decks.B.onSnapshot((snapshot) => updateDeck('B', snapshot));
+        // Only a natural end-of-track advances the playlist; pause and seek do not.
+        mixer.decks.A.onTrackEnd = () => { void advanceQueue('A'); };
+        mixer.decks.B.onTrackEnd = () => { void advanceQueue('B'); };
         subscribed = true;
       }
       updateDeck('A', mixer.decks.A.snapshot());

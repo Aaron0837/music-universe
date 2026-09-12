@@ -11,6 +11,7 @@ export interface LibraryRepository {
   listPlaylists(): Promise<Playlist[]>;
   createPlaylist(name: string): Promise<Playlist>;
   savePlaylist(playlist: Playlist): Promise<void>;
+  removePlaylist(id: string): Promise<void>;
   storage(): Promise<{ usage: number; quota: number; persistent: boolean }>;
   requestPersistence(): Promise<boolean>;
 }

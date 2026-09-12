@@ -129,6 +129,10 @@ export class WebLibraryRepository implements LibraryRepository {
     await this.db.playlists.put(playlist);
   }
 
+  async removePlaylist(id: string): Promise<void> {
+    await this.db.playlists.delete(id);
+  }
+
   async storage(): Promise<{ usage: number; quota: number; persistent: boolean }> {
     const estimate = await navigator.storage?.estimate?.();
     const persistent = await navigator.storage?.persisted?.() ?? false;

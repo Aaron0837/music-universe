@@ -1,5 +1,6 @@
 import type { DeckId, VisualizerFrame } from '../../types/models';
 import { averageBand, calculateRms } from '../analysis';
+import { tempoForAudible } from '../keylock/keyLockMath';
 import { DeckEngine } from './DeckEngine';
 import { equalPowerGains } from './mixerMath';
 import { syncPosition } from './syncMath';
@@ -61,7 +62,7 @@ export class MixerEngine {
     if (!a.duration || !b.duration) return '请先载入两个 Deck';
     if (a.snapshot().reverse || b.snapshot().reverse) return '请关闭倒放后再同步';
     if (!a.beatGrid || !b.beatGrid || Math.min(a.beatGrid.confidence, b.beatGrid.confidence) < 0.5) return '拍点置信度不足，请用 Tap Tempo 或手动 BPM 和首拍校准';
-    const tempo = a.currentBpm / Math.pow(2, b.snapshot().keyShift / 12);
+    const tempo = tempoForAudible(a.currentBpm, b.snapshot().keyLock, b.snapshot().keyShift);
     if (tempo < 60 || tempo > 200) return '目标速度超出 60–200 BPM，请先调整 Harmony';
     b.setTempo(tempo);
     b.seek(Math.min(b.duration, syncPosition(a.position, a.beatGrid, b.position, b.beatGrid)));

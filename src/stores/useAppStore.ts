@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AppView, DeckId, DeckSnapshot, ThemeMode, Track } from '../types/models';
+import type { AppView, DeckId, DeckQueue, DeckSnapshot, ThemeMode, Track } from '../types/models';
 
 const emptyDeck: DeckSnapshot = {
   playing: false,
@@ -9,6 +9,8 @@ const emptyDeck: DeckSnapshot = {
   bpm: 120,
   sourceBpm: 120,
   keyShift: 0,
+  keyLock: false,
+  keyLockAvailable: false,
   low: 0,
   mid: 0,
   high: 0,
@@ -35,6 +37,8 @@ interface AppStore {
   masterVolume: number;
   activeTrackId?: string;
   decks: Record<DeckId, DeckSnapshot>;
+  /** Playlist playing on a deck, advanced when a track ends naturally. */
+  queue: DeckQueue | null;
   toast?: string;
   setView(view: AppView): void;
   setTheme(theme: ThemeMode): void;
@@ -45,6 +49,9 @@ interface AppStore {
   setMasterVolume(value: number): void;
   setActiveTrack(id?: string): void;
   updateDeck(id: DeckId, snapshot: DeckSnapshot): void;
+  setQueue(trackIds: string[], deck: DeckId, index: number): void;
+  setQueueIndex(index: number): void;
+  clearQueue(): void;
   notify(message?: string): void;
 }
 
@@ -61,6 +68,7 @@ export const useAppStore = create<AppStore>((set) => ({
   crossfader: 0,
   masterVolume: 0.8,
   decks: { A: { ...emptyDeck }, B: { ...emptyDeck } },
+  queue: null,
   setView: (view) => set({ view }),
   setTheme: (theme) => {
     localStorage.setItem('mu-theme', theme);
@@ -73,5 +81,8 @@ export const useAppStore = create<AppStore>((set) => ({
   setMasterVolume: (masterVolume) => set({ masterVolume }),
   setActiveTrack: (activeTrackId) => set({ activeTrackId }),
   updateDeck: (id, snapshot) => set((state) => ({ decks: { ...state.decks, [id]: snapshot } })),
+  setQueue: (trackIds, deck, index) => set({ queue: { trackIds: [...trackIds], deck, index } }),
+  setQueueIndex: (index) => set((state) => (state.queue ? { queue: { ...state.queue, index } } : {})),
+  clearQueue: () => set({ queue: null }),
   notify: (toast) => set({ toast }),
 }));

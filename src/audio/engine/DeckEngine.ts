@@ -1,6 +1,9 @@
+import type { SoundTouchNode } from '@soundtouchjs/audio-worklet';
 import type { BeatGrid, DeckSnapshot } from '../../types/models';
 import { analyzeBuffer } from '../analysis/analyzeBuffer';
 import type { TrackAnalysis } from '../analysis/beatAnalysis';
+import { audibleBpm, resolveRates, type DeckRates } from '../keylock/keyLockMath';
+import { createKeyLockNode, keyLockSupported } from '../keylock/worklet';
 import { TransportClock } from './TransportClock';
 
 export class DeckEngine {
@@ -15,6 +18,10 @@ export class DeckEngine {
   private sourceBpm = 120;
   private bpm = 120;
   private keyShift = 0;
+  private keyLock = false;
+  private worklet?: SoundTouchNode;
+  private keyLockGeneration = 0;
+  private keyLockAvailable = keyLockSupported();
   private volume = 0.86;
   private loopBeats = 4;
   private grid?: BeatGrid;
@@ -30,6 +37,8 @@ export class DeckEngine {
   private analysisAbort?: AbortController;
   private disposed = false;
   onAnalysis?: (id: string, analysis: TrackAnalysis) => void;
+  /** Fires only when a track reaches its end on its own, not on pause, seek or loop. */
+  onTrackEnd?: () => void;
   private readonly low: BiquadFilterNode;
   private readonly mid: BiquadFilterNode;
   private readonly high: BiquadFilterNode;
@@ -195,7 +204,7 @@ export class DeckEngine {
     source.playbackRate.value = rate;
     this.clock.setSpeed(rate, this.context.currentTime, 0);
     this.clock.anchor(position, this.context.currentTime);
-    source.connect(this.input);
+    source.connect(this.keyLock && this.worklet ? this.worklet : this.input);
     this.source = source;
     this.applyLoop();
     source.onended = () => {
@@ -204,6 +213,8 @@ export class DeckEngine {
       this.clock.playing = false;
       this.clock.anchor(this.clock.reverse ? 0 : this.duration, this.context.currentTime);
       this.emit();
+      // stopSource() clears onended first, so reaching here means a natural end.
+      if (!this.clock.loop) this.onTrackEnd?.();
     };
     source.start(0, this.clock.reverse ? Math.max(0, this.duration - position) : position);
     this.clock.playing = true;
@@ -246,17 +257,61 @@ export class DeckEngine {
     this.emit();
   }
 
-  private get effectiveRate(): number { return this.bpm / this.sourceBpm * Math.pow(2, this.keyShift / 12); }
+  private get rates(): DeckRates {
+    return resolveRates({ keyLock: this.keyLock, bpm: this.bpm, sourceBpm: this.sourceBpm, keyShift: this.keyShift });
+  }
+
+  private get effectiveRate(): number { return this.rates.clockRate; }
 
   private updateRate(): void {
     const now = this.context.currentTime;
-    const rate = this.effectiveRate;
-    const from = this.clock.setSpeed(rate, now);
+    const { clockRate, workletRate, workletPitch } = this.rates;
+    const from = this.clock.setSpeed(clockRate, now);
     if (this.source) {
       this.source.playbackRate.cancelScheduledValues(now);
       this.source.playbackRate.setValueAtTime(from, now);
-      this.source.playbackRate.linearRampToValueAtTime(rate, now + 0.025);
+      this.source.playbackRate.linearRampToValueAtTime(clockRate, now + 0.025);
     }
+    if (this.worklet && this.keyLock) {
+      this.worklet.playbackRate.setTargetAtTime(workletRate, now, 0.01);
+      this.worklet.pitch.setTargetAtTime(workletPitch, now, 0.01);
+    }
+  }
+
+  /**
+   * Turns key lock on or off. Enabling is async because the SoundTouch processor
+   * has to be registered with the AudioContext before a node can exist.
+   */
+  async setKeyLock(enabled: boolean): Promise<void> {
+    if (this.keyLock === enabled) return;
+    if (!enabled) { this.applyKeyLock(false); return; }
+    const generation = ++this.keyLockGeneration;
+    if (!this.worklet) {
+      const created = await createKeyLockNode(this.context);
+      if (generation !== this.keyLockGeneration || this.disposed) { created?.disconnect(); return; }
+      if (!created) {
+        this.keyLockAvailable = false;
+        this.error = '当前浏览器不支持保调变速（需要 AudioWorklet）';
+        this.emit();
+        return;
+      }
+      created.connect(this.input);
+      this.worklet = created;
+    }
+    this.keyLockAvailable = true;
+    this.applyKeyLock(true);
+  }
+
+  private applyKeyLock(enabled: boolean): void {
+    const position = this.position;
+    const resume = this.isPlaying;
+    this.stopSource();
+    this.keyLock = enabled;
+    this.clock.anchor(position, this.context.currentTime);
+    this.updateRate();
+    this.revision++;
+    if (resume) this.resumeAfterCommand();
+    this.emit();
   }
 
   setSourceBpm(bpm: number): void {
@@ -341,7 +396,8 @@ export class DeckEngine {
 
   get position(): number { return this.clock.position(this.context.currentTime); }
   get duration(): number { return this.buffer?.duration ?? 0; }
-  get currentBpm(): number { return this.bpm * Math.pow(2, this.keyShift / 12); }
+  get currentBpm(): number { return audibleBpm({ keyLock: this.keyLock, bpm: this.bpm, keyShift: this.keyShift }); }
+  get isKeyLocked(): boolean { return this.keyLock; }
   get isPlaying(): boolean { return this.clock.playing; }
   get isReverse(): boolean { return this.clock.reverse; }
   get transportRevision(): number { return this.revision; }
@@ -352,6 +408,7 @@ export class DeckEngine {
   snapshot(): DeckSnapshot {
     return { trackId: this.trackId, playing: this.isPlaying, position: this.position, duration: this.duration,
       volume: this.volume, bpm: this.bpm, sourceBpm: this.sourceBpm, keyShift: this.keyShift,
+      keyLock: this.keyLock, keyLockAvailable: this.keyLockAvailable,
       low: this.eq.low, mid: this.eq.mid, high: this.eq.high, filter: this.filterValue, effects: { ...this.effects },
       loopBeats: this.loopBeats, loopEnabled: Boolean(this.clock.loop), reverse: this.clock.reverse,
       status: this.status, error: this.error, grid: this.grid, analysisPending: this.analysisPending,
@@ -362,6 +419,8 @@ export class DeckEngine {
     if (this.disposed) return;
     this.disposed = true; this.generation++;
     this.analysisAbort?.abort(); this.stopSource(); this.lfo.stop();
+    this.keyLockGeneration++;
+    this.worklet?.disconnect(); this.worklet = undefined;
     [this.input, this.output, this.low, this.mid, this.high, this.filter, this.dry, this.delay,
       this.feedback, this.delayWet, this.convolver, this.reverbWet, this.flanger, this.flangerWet,
       this.lfo, this.lfoDepth, this.analyser].forEach((node) => node.disconnect());

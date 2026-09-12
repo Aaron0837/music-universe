@@ -25,7 +25,7 @@ npm run preview
 node scripts/verify-production.mjs
 ```
 
-安装了 Chrome / Edge 时，可设置环境变量 `MU_BROWSER=chrome` 或 `MU_BROWSER=msedge` 运行相同 Playwright 测试。默认使用 Playwright Chromium。需要对应浏览器已安装。
+安装了 Chrome / Edge 时可设置 `MU_BROWSER=chrome` 运行相同测试；多引擎套件需先 `npx playwright install firefox webkit`。注意 Playwright 的 Windows WebKit 不含 Web Audio，故 WebKit 只跑外壳、离线与降级用例。
 
 ## 本轮完成
 
@@ -42,17 +42,21 @@ node scripts/verify-production.mjs
 - 三维视觉走真实 HDR 后处理管线：`EffectComposer` + `UnrealBloomPass` 泛光 + ACES 色调映射，再加一道色差 / 暗角 / 颗粒的调色 pass，而不是靠加色混合硬凑辉光。泛光强度跟随响度与拍点呼吸。
 - 新增两个预设：Hyper Tunnel（顶点着色器生成星流，逐帧只更新 uniform）与 Aurora Veil（片元着色器程序化极光）。预设统一在 `src/presets/index.ts` 注册一次。
 - 低质量档位直接跳过整条后处理管线，保留原先的裸渲染路径兜底。
+- **保调变速（Key Lock）**：开启后 BPM 只改变速度，不再带动音高；Harmony 变成纯调性移调。基于 SoundTouch 的 AudioWorklet（MPL-2.0）实时处理，实测 1.5x 变速与 0.75x 都保持 440 Hz，升八度准确落在 880 Hz。
+- **播放列表补完**：可加入 / 移除曲目、上移下移排序、重命名与删除歌单；按顺序连放，一首自然播完自动接下一首（暂停、跳转、循环不会触发续播）。
+- **可安装的 PWA**：自带 manifest、192 / 512 图标与 maskable 图标；Service Worker 预缓存应用外壳，断网也能冷启动。
+- **包体瘦身**：构建不再发布 sourcemap（原先 5.7 MB，占部署总量 78%），并把 three.js 单独拆 chunk；部署总量 7.34 MB → 1.62 MB，`VisualsPage` 513 KB → 23 KB。需要调试时 `MU_SOURCEMAPS=1 npm run build`。
 
 ## 使用边界
 
-- **尚无保调变速。** 实际速率 = BPM / 原曲 BPM × `2^(Harmony/12)`；Harmony 与 BPM 都会影响速度和音高。不是分轨、不是专业 Key Lock。
+- 保调变速依赖 AudioWorklet：不支持的浏览器会自动禁用该开关（并在 Deck 上说明原因），其余功能不受影响。
 - BPM 是基于起音包络的近似分析，可能存在倍速 / 半速歧义。弱节奏、变拍、节奏漂移的音乐需要手动校准。当前分析取前 120 秒和第一声道；固定网格不跟踪变速曲。
 - 倒放时不进行 Sync 或音游。跳转和循环回绕会重建附近音符；短循环不适合完整音游练习。游戏是程序化节奏练习，不是自动转录原曲鼓谱。
 - 转盘提供拖动定位式搓动，不宣称 AudioWorklet 级专业 scratch。当前效果器为独立湿声发送，不是独立干湿交叉混合。
 - MP3 / WAV / FLAC / M4A / OGG 的具体可解码范围取决于浏览器；暂无额外 WASM 解码器。
-- 曲库离线恢复指已经打开或缓存的应用可读取本地文件；尚未实现 Service Worker 冷启动离线应用。
-- 播放列表目前只支持创建和展示，完整添加、排序和编辑仍待实现。本轮不增加 Tauri、云同步或 WASM。
-- 自动化输出电平检查不能替代真实扬声器试听。Safari、Firefox、iOS / Android 实机与长期低端设备性能仍需要人工验收。
+- 曲库离线恢复指已经打开或缓存的应用可读取本地文件；Service Worker 已支持应用外壳的冷启动离线，但音频仍须先导入本机。
+- 播放列表支持增删与排序，但尚无嵌套歌单、导入导出与云同步。本轮不增加 Tauri 或 WASM。
+- 自动化输出电平检查不能替代真实扬声器试听。跨浏览器测试跑在 Chromium、Firefox 与 WebKit（Safari 引擎）上，但 **Playwright 的 Windows WebKit 不含 Web Audio**，因此 WebKit 只覆盖外壳、离线与降级路径；真实 Safari / iOS / Android 实机仍需人工验收。
 
 ## 模块与扩展
 
@@ -76,6 +80,9 @@ LibraryRepository → Dexie v2 ← beat analysis Worker
 - `src/components/ui/AmbientField.tsx`：不拦截输入的背景效果，坐标不进 Zustand。
 - `src/data/`：迁移与缓存；音频资源不进入 UI store。
 - `src/presets/`：原创预设。新增预设实现 `UniversePreset`，注册一次；创建时分配，更新时复用，销毁时释放 geometry / material。
+- `src/audio/keylock/`：保调变速。`keyLockMath` 纯函数决定时钟速率与 worklet 音高；`worklet.ts` **必须动态 import** SoundTouch——该包在模块顶层继承 `AudioWorkletNode`，静态引入会让不支持的浏览器在 React 挂载前白屏。
+- `src/playlists/`：`playlistMath` 是纯排序 / 去重规则，`queue.ts` 负责连放与自然播完的续播。
+- `src/audio/engine/loadTrack.ts`：曲库载入的共用入口，UI 与播放队列都走它，避免竞态与重复解锁音频。
 
 ## 本地视觉审阅
 
@@ -97,8 +104,8 @@ node scripts/canvas-proof.mjs
 
 它对每个预设单独截图 `.visual-stage canvas`，再在 Chromium 里解码并统计亮度分布；任一预设标准差过低或全黑则脚本以非零码退出。注意不要改用 `drawImage` 直接读在线 canvas——在 `preserveDrawingBuffer: false`（默认）下会假阴性报全黑。
 
-Vitest 覆盖播放时钟、速率斜坡、Sync 数学、循环、拍点检测、游戏窗口及预设资源释放。
-Playwright 覆盖真实示例 / 文件音频输出、离线读取、迁移、Perfect 输出、拖放、触控组合、主题、布局与可视化切换。仍需人工检查听感和真实设备性能，不能以自动测试通过宣称全平台验收。
+Vitest 覆盖播放时钟、速率斜坡、Sync 数学、循环、拍点检测、游戏窗口、保调变速速率解析、播放列表排序及预设资源释放。
+Playwright 在 Chromium、Firefox 与 WebKit 三个引擎上覆盖真实示例 / 文件音频输出、离线读取、迁移、Perfect 输出、拖放、触控组合、主题、布局、可视化切换、保调变速基频、播放列表全流程、PWA 离线冷启动，以及无 AudioWorklet / 无 Web Audio 时的降级路径。仍需人工检查听感和真实设备性能，不能以自动测试通过宣称全平台验收。
 
 ## 许可
 
