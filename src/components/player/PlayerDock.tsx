@@ -1,4 +1,4 @@
-import { ListMusic, Pause, Play, SkipBack, SkipForward, Volume2 } from 'lucide-react';
+import { ListMusic, Maximize2, Pause, Play, SkipBack, SkipForward, Volume2 } from 'lucide-react';
 import { getMixer } from '../../audio/engine/runtime';
 import { useMusicActions } from '../../hooks/useMusicActions';
 import { useAppStore } from '../../stores/useAppStore';
@@ -19,6 +19,7 @@ export function PlayerDock() {
   const notify = useAppStore((state) => state.notify);
   const volume = useAppStore((state) => state.masterVolume);
   const setVolume = useAppStore((state) => state.setMasterVolume);
+  const setNowPlaying = useAppStore((state) => state.setNowPlaying);
   const active = tracks.find((track) => track.id === activeId);
   const title = active?.title ?? (activeId === 'demo' ? 'Orbital Signal' : '准备播放');
   const artist = active?.artist ?? (activeId === 'demo' ? 'Music Universe Original' : '选择本地音乐或示例');
@@ -38,7 +39,7 @@ export function PlayerDock() {
   };
   return (
     <footer className="player-dock">
-      <div className="dock-track"><Artwork artwork={active?.artwork} /><div><strong>{title}</strong><small>{artist}</small></div><span className="dock-deck">DECK {activeDeck}</span></div>
+      <button className="dock-track" type="button" aria-label="打开播放大屏" onClick={() => setNowPlaying(true)}><Artwork artwork={active?.artwork} /><div><strong>{title}</strong><small>{artist}</small></div><span className="dock-deck">DECK {activeDeck}</span><Maximize2 className="dock-expand" /></button>
       <div className="dock-transport">
         <div className="transport-buttons"><button type="button" aria-label="上一首" disabled={!tracks.length} onClick={() => skip(-1)}><SkipBack /></button><button className="play-main" type="button" aria-label="播放或暂停" onClick={() => void toggle()}>{deck.playing ? <Pause /> : <Play />}</button><button type="button" aria-label="下一首" disabled={!tracks.length} onClick={() => skip(1)}><SkipForward /></button></div>
         <div className="dock-progress"><span>{formatTime(deck.position)}</span><div><Waveform compact progress={progress} /><input aria-label="播放进度" type="range" min={0} max={deck.duration || 1} step={0.1} value={deck.position} onChange={(event) => getMixer().decks[activeDeck].seek(Number(event.target.value))} /></div><span>{formatTime(deck.duration)}</span></div>

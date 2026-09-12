@@ -5,7 +5,10 @@ import { usePreferences } from '../stores/usePreferences';
 import { libraryRepository } from '../data/WebLibraryRepository';
 import { useAppStore } from '../stores/useAppStore';
 import { AppShell } from './AppShell';
+import { NowPlaying } from '../components/player/NowPlaying';
 import { DiscoverPage } from '../pages/DiscoverPage';
+import { applyArtworkTheme } from '../theme/artworkTheme';
+import { useArtworkPalette } from '../theme/useArtworkPalette';
 import { LibraryPage } from '../pages/LibraryPage';
 
 const DJPage = lazy(() => import('../pages/DJPage').then((module) => ({ default: module.DJPage })));
@@ -21,7 +24,11 @@ export function App() {
   const setTracks = useAppStore((state) => state.setTracks);
   const updateDeck = useAppStore((state) => state.updateDeck);
   const notify = useAppStore((state) => state.notify);
+  const artwork = useAppStore((state) => state.tracks.find((track) => track.id === state.decks[state.activeDeck].trackId)?.artwork);
   const [draggingFiles, setDraggingFiles] = useState(false);
+
+  // The playing cover drives the accent colour of the whole interface.
+  useArtworkPalette(artwork);
 
   useEffect(() => { void libraryRepository.listTracks().then(setTracks).catch(() => notify('无法打开本地曲库')); }, [notify, setTracks]);
   useEffect(() => {
@@ -30,6 +37,8 @@ export function App() {
       const resolved = theme === 'system' ? (media.matches ? 'dark' : 'light') : theme;
       document.documentElement.dataset.theme = resolved;
       document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolved === 'dark' ? '#151d19' : '#f7f9f5');
+      // An accent that passes contrast on a light page may fail on a dark one.
+      applyArtworkTheme();
     };
     apply(); media.addEventListener('change', apply);
     return () => media.removeEventListener('change', apply);
@@ -56,6 +65,8 @@ export function App() {
       if ((event.target instanceof Element && event.target.closest('input,textarea,select,button,[contenteditable="true"]')) || event.repeat) return;
       if (event.code === 'Space') { event.preventDefault(); void getMixer().decks[useAppStore.getState().activeDeck].toggle().catch(() => notify('请再次点击播放以启用声音')); }
       if (event.key === '1' || event.key === '2') useAppStore.getState().setActiveDeck(event.key === '1' ? 'A' : 'B');
+      // "V" opens the immersive player, matching the launcher button in the dock.
+      if (event.key === 'v' || event.key === 'V') useAppStore.getState().setNowPlaying(!useAppStore.getState().nowPlaying);
     };
     window.addEventListener('keydown', keydown);
     return () => { window.clearInterval(interval); window.removeEventListener('keydown', keydown); unsubscribeA?.(); unsubscribeB?.(); };
@@ -107,5 +118,5 @@ export function App() {
   }, [toast, notify]);
 
   const page = view === 'discover' ? <DiscoverPage /> : view === 'library' ? <LibraryPage /> : view === 'playlists' ? <PlaylistsPage /> : view === 'dj' ? <DJPage /> : view === 'visuals' ? <VisualsPage /> : <SettingsPage />;
-  return <><AppShell><Suspense fallback={<div className="page-loading">正在准备体验…</div>}>{page}</Suspense></AppShell>{draggingFiles && <div className="global-drop"><strong>释放以导入音乐</strong><span>文件只会保存在当前设备</span></div>}</>;
+  return <><AppShell><Suspense fallback={<div className="page-loading">正在准备体验…</div>}>{page}</Suspense></AppShell><NowPlaying />{draggingFiles && <div className="global-drop"><strong>释放以导入音乐</strong><span>文件只会保存在当前设备</span></div>}</>;
 }

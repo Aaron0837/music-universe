@@ -7,6 +7,10 @@ export interface LibraryRepository {
   getTrack(id: string): Promise<StoredTrack | undefined>;
   getAnalysis(id: string): Promise<TrackAnalysis | undefined>;
   saveAnalysis(id: string, analysis: TrackAnalysis): Promise<void>;
+  /** Raw lyric text as stored in the file, or undefined when it has none. */
+  getLyrics(id: string): Promise<string | undefined>;
+  /** Replace a track's lyric text; an empty string clears it. */
+  saveLyrics(id: string, text: string): Promise<void>;
   removeTrack(id: string): Promise<void>;
   listPlaylists(): Promise<Playlist[]>;
   createPlaylist(name: string): Promise<Playlist>;

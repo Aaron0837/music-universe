@@ -3,12 +3,14 @@ import type { Playlist, StoredTrack, Track } from '../types/models';
 import type { LibraryRepository } from './LibraryRepository';
 import type { BeatGrid } from '../types/models';
 import type { TrackAnalysis } from '../audio/analysis/beatAnalysis';
+import { lyricsTextFromCommon } from '../lyrics/lrc';
 
 interface AudioRecord { trackId: string; blob: Blob }
 interface ArtworkRecord { trackId: string; blob: Blob }
 interface WaveformRecord { trackId: string; peaks: Float32Array<ArrayBuffer> }
 interface AnalysisRecord { trackId: string; bpm?: number; musicalKey?: string; grid?: BeatGrid; version: number }
 interface SettingRecord { key: string; value: unknown }
+interface LyricsRecord { trackId: string; text: string }
 
 export class MusicDatabase extends Dexie {
   tracks!: EntityTable<Track, 'id'>;
@@ -18,6 +20,7 @@ export class MusicDatabase extends Dexie {
   waveforms!: EntityTable<WaveformRecord, 'trackId'>;
   analyses!: EntityTable<AnalysisRecord, 'trackId'>;
   settings!: EntityTable<SettingRecord, 'key'>;
+  lyrics!: EntityTable<LyricsRecord, 'trackId'>;
 
   constructor(name = 'music-universe-library') {
     super(name);
@@ -34,6 +37,9 @@ export class MusicDatabase extends Dexie {
     this.version(2).stores({ analyses: 'trackId, version' }).upgrade(async (transaction) => {
       await transaction.table('analyses').toCollection().modify((record) => { record.version = 0; });
     });
+    // Lyrics live apart from the track row: a track carries lyrics rarely, and
+    // keeping the text out of `tracks` means listing the library stays cheap.
+    this.version(3).stores({ lyrics: 'trackId' });
   }
 }
 
@@ -53,6 +59,7 @@ export class WebLibraryRepository implements LibraryRepository {
       const picture = metadata.common.picture?.[0];
       const artwork = picture ? new Blob([new Uint8Array(picture.data)], { type: picture.format }) : undefined;
       const rawTitle = file.name.replace(/\.[^.]+$/, '');
+      const lyrics = lyricsTextFromCommon(metadata.common as { lyrics?: unknown; syncLyrics?: unknown });
       const track: Track = {
         id: crypto.randomUUID(),
         title: metadata.common.title?.trim() || rawTitle,
@@ -64,12 +71,14 @@ export class WebLibraryRepository implements LibraryRepository {
         artwork,
         bpm: metadata.common.bpm,
         genres: metadata.common.genre,
+        hasLyrics: Boolean(lyrics?.trim()),
         addedAt: Date.now(),
       };
-      await this.db.transaction('rw', this.db.tracks, this.db.audioBlobs, this.db.artworks, async () => {
+      await this.db.transaction('rw', this.db.tracks, this.db.audioBlobs, this.db.artworks, this.db.lyrics, async () => {
         await this.db.tracks.add(track);
         await this.db.audioBlobs.add({ trackId: track.id, blob: file });
         if (artwork) await this.db.artworks.add({ trackId: track.id, blob: artwork });
+        if (lyrics?.trim()) await this.db.lyrics.add({ trackId: track.id, text: lyrics });
       });
       imported.push(track);
     }
@@ -91,13 +100,14 @@ export class WebLibraryRepository implements LibraryRepository {
   }
 
   async removeTrack(id: string): Promise<void> {
-    await this.db.transaction('rw', this.db.tracks, this.db.audioBlobs, this.db.artworks, this.db.waveforms, this.db.analyses, async () => {
+    await this.db.transaction('rw', [this.db.tracks, this.db.audioBlobs, this.db.artworks, this.db.waveforms, this.db.analyses, this.db.lyrics], async () => {
       await Promise.all([
         this.db.tracks.delete(id),
         this.db.audioBlobs.delete(id),
         this.db.artworks.delete(id),
         this.db.waveforms.delete(id),
         this.db.analyses.delete(id),
+        this.db.lyrics.delete(id),
       ]);
     });
   }
@@ -112,6 +122,19 @@ export class WebLibraryRepository implements LibraryRepository {
       if (!await this.db.tracks.get(id)) return;
       await this.db.analyses.put({ trackId: id, grid: analysis.grid, bpm: analysis.grid?.bpm, version: 1 });
       await this.db.waveforms.put({ trackId: id, peaks: analysis.peaks });
+    });
+  }
+
+  async getLyrics(id: string): Promise<string | undefined> {
+    return (await this.db.lyrics.get(id))?.text;
+  }
+
+  async saveLyrics(id: string, text: string): Promise<void> {
+    await this.db.transaction('rw', this.db.tracks, this.db.lyrics, async () => {
+      if (!await this.db.tracks.get(id)) return;
+      if (text.trim()) await this.db.lyrics.put({ trackId: id, text });
+      else await this.db.lyrics.delete(id);
+      await this.db.tracks.update(id, { hasLyrics: Boolean(text.trim()) });
     });
   }
 

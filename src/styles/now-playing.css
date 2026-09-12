@@ -1,0 +1,235 @@
+/* Immersive now-playing surface.
+   Tokens --accent/--accent-2 are artwork-derived and contrast-checked;
+   --glow/--tint are decorative and only ever used behind content. */
+
+.now-playing {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  background: var(--bg);
+  animation: np-enter .38s cubic-bezier(.22, .8, .28, 1);
+}
+
+@keyframes np-enter {
+  from { opacity: 0; transform: scale(.985); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* The playing cover, blurred past the point of recognition, becomes the room. */
+.np-backdrop { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.np-backdrop-art {
+  position: absolute;
+  inset: -18%;
+  width: 136%;
+  height: 136%;
+  filter: blur(90px) saturate(170%);
+  opacity: .5;
+  transform: scale(1.1);
+}
+.np-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 90% at 18% 8%, color-mix(in srgb, var(--glow, var(--accent)) 26%, transparent), transparent 62%),
+    linear-gradient(color-mix(in srgb, var(--bg) 78%, transparent), color-mix(in srgb, var(--bg) 94%, transparent));
+}
+
+.np-top {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px clamp(18px, 4vw, 48px) 8px;
+}
+.np-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--accent);
+}
+.np-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  color: var(--text);
+  background: var(--panel);
+  backdrop-filter: blur(12px);
+}
+.np-icon svg { width: 17px; }
+
+.np-body {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(240px, 42%) minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 64px);
+  align-items: center;
+  min-height: 0;
+  padding: 8px clamp(18px, 4vw, 48px);
+}
+
+.np-art-column { display: grid; gap: 26px; justify-items: center; align-content: center; }
+.np-art {
+  width: min(100%, 380px);
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 18px;
+  background-size: cover;
+  box-shadow: 0 30px 70px -20px color-mix(in srgb, var(--glow, var(--accent)) 55%, transparent), var(--shadow);
+}
+.np-art svg { width: 64px; height: 64px; }
+/* A slow breath while playing, so the surface is alive without moving much. */
+.np-art.playing { animation: np-spin 26s linear infinite; border-radius: 50%; }
+
+@keyframes np-spin { to { transform: rotate(360deg); } }
+
+.np-meta { display: grid; gap: 7px; justify-items: center; text-align: center; }
+.np-meta h2 { margin: 0; font-size: clamp(19px, 2vw, 27px); font-weight: 560; letter-spacing: -.6px; }
+.np-meta p { margin: 0; color: var(--muted); font-size: 13px; }
+.np-facts {
+  margin-top: 5px;
+  padding: 5px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--panel);
+  font-size: 9px;
+  letter-spacing: .8px;
+}
+
+.np-lyric-column { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 14px; min-height: 0; height: 100%; }
+.np-lyric-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.np-lyric-head > span { font-size: 9px; letter-spacing: 2px; color: var(--muted); }
+.np-text-button {
+  padding: 6px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--accent);
+  background: var(--panel);
+  font-size: 10px;
+}
+
+/* The scroll container owns the scroll; the page behind it never moves. */
+.np-lines {
+  margin: 0;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding-block: 12vh;
+  text-align: left;
+}
+.np-lines::-webkit-scrollbar { display: none; }
+.np-empty { align-self: center; color: var(--muted); font-size: 13px; line-height: 1.9; }
+
+.np-line {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 11px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: clamp(16px, 1.5vw, 22px);
+  font-weight: 520;
+  line-height: 1.55;
+  letter-spacing: -.2px;
+  color: var(--muted);
+  transition: color .32s, transform .32s, opacity .32s;
+}
+.np-line.past { opacity: .38; }
+.np-line.future { opacity: .58; }
+.np-line.active {
+  color: var(--text);
+  transform: scale(1.045);
+  transform-origin: left center;
+}
+/* Karaoke fill: the accent sweeps across the active line as the beat advances. */
+.np-line.active .np-line-text {
+  background-image: linear-gradient(90deg,
+    var(--accent) calc(var(--wipe, 0) * 100%),
+    var(--text) calc(var(--wipe, 0) * 100%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 6px 26px color-mix(in srgb, var(--glow, var(--accent)) 40%, transparent);
+}
+
+.np-editor { display: grid; gap: 12px; align-content: start; min-height: 0; }
+.np-editor label { font-size: 11px; color: var(--muted); }
+.np-editor textarea {
+  width: 100%;
+  min-height: 300px;
+  max-height: 46vh;
+  padding: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--panel-strong);
+  font-family: ui-monospace, 'Cascadia Code', monospace;
+  font-size: 12px;
+  line-height: 1.75;
+  resize: vertical;
+}
+.np-editor-actions { display: flex; gap: 9px; }
+
+.np-controls {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(16px, 3vw, 44px);
+  padding: 16px clamp(18px, 4vw, 48px) 26px;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel-strong) 70%, transparent);
+  backdrop-filter: blur(18px);
+}
+.np-transport { display: flex; align-items: center; gap: 16px; }
+.np-play {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 0;
+  border-radius: 50%;
+  color: var(--bg);
+  background: var(--accent);
+  box-shadow: 0 12px 30px -10px color-mix(in srgb, var(--glow, var(--accent)) 80%, transparent);
+}
+.np-play svg { width: 21px; }
+.np-seek { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px; align-items: center; gap: 12px; font-size: 10px; color: var(--muted); }
+.np-seek input { width: 100%; }
+.np-volume { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; }
+
+.dock-expand { width: 14px !important; color: var(--muted); opacity: 0; transition: opacity .2s; }
+.dock-track:hover .dock-expand, .dock-track:focus-visible .dock-expand { opacity: 1; }
+
+@media (max-width: 900px) {
+  .np-body { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); gap: 22px; align-items: start; overflow-y: auto; }
+  .np-art { width: min(52vw, 220px); }
+  .np-art-column { gap: 16px; }
+  .np-lyric-column { height: auto; }
+  .np-lines { padding-block: 24px; max-height: 34vh; }
+  .np-controls { grid-template-columns: auto minmax(0, 1fr); }
+  .np-volume { display: none; }
+}
+
+@media (max-width: 560px) {
+  .np-controls { grid-template-columns: 1fr; gap: 12px; justify-items: center; }
+  .np-seek { width: 100%; }
+  .np-line { font-size: 16px; }
+}
+
+:root[data-reduced='true'] .now-playing { animation: none; }
+:root[data-reduced='true'] .np-art.playing { animation: none; border-radius: 18px; }
+:root[data-reduced='true'] .np-line { transition: none; }
+:root[data-reduced='true'] .np-line.active { transform: none; }

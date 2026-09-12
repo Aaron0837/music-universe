@@ -16,6 +16,10 @@
   --blue: #ddedf6;
   --shadow: 0 12px 35px rgba(44,72,52,.045);
   --wave-muted: #b4c7bc;
+  /* Artwork-derived. These defaults are the interface accent; artworkTheme.ts
+     overrides them inline while a cover with usable colour is playing. */
+  --glow: #39745e;
+  --tint: #e7efe9;
 }
 :root[data-theme='dark'] {
   color-scheme: dark;
@@ -31,6 +35,8 @@
   --line: rgba(196,222,205,.12);
   --line-strong: rgba(196,222,205,.28);
   --wave-muted: #567364;
+  --glow: #a2d4b8;
+  --tint: #1d2a23;
 }
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; width: 100%; min-width: 320px; min-height: 100%; }

@@ -39,6 +39,8 @@ interface AppStore {
   decks: Record<DeckId, DeckSnapshot>;
   /** Playlist playing on a deck, advanced when a track ends naturally. */
   queue: DeckQueue | null;
+  /** Immersive full-screen player with artwork, lyrics and controls. */
+  nowPlaying: boolean;
   toast?: string;
   setView(view: AppView): void;
   setTheme(theme: ThemeMode): void;
@@ -52,6 +54,7 @@ interface AppStore {
   setQueue(trackIds: string[], deck: DeckId, index: number): void;
   setQueueIndex(index: number): void;
   clearQueue(): void;
+  setNowPlaying(open: boolean): void;
   notify(message?: string): void;
 }
 
@@ -69,6 +72,7 @@ export const useAppStore = create<AppStore>((set) => ({
   masterVolume: 0.8,
   decks: { A: { ...emptyDeck }, B: { ...emptyDeck } },
   queue: null,
+  nowPlaying: false,
   setView: (view) => set({ view }),
   setTheme: (theme) => {
     localStorage.setItem('mu-theme', theme);
@@ -84,5 +88,6 @@ export const useAppStore = create<AppStore>((set) => ({
   setQueue: (trackIds, deck, index) => set({ queue: { trackIds: [...trackIds], deck, index } }),
   setQueueIndex: (index) => set((state) => (state.queue ? { queue: { ...state.queue, index } } : {})),
   clearQueue: () => set({ queue: null }),
+  setNowPlaying: (nowPlaying) => set({ nowPlaying }),
   notify: (toast) => set({ toast }),
 }));
