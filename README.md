@@ -5,8 +5,8 @@
 React + TypeScript + Web Audio API + Canvas / Three.js + Zustand + Dexie。
 音乐与分析结果仅存本机，不上传、不接入遥测。根目录 Northstar Lab 不受此子项目影响。
 
-[当前线上版本](https://aaron0837.github.io/music-universe/) 尚未包含本次改版。
-**所有改动先本地验证，收到用户明确“可以推送”后才提交、推送或发布。**
+[线上版本](https://aaron0837.github.io/music-universe/) 随 main 分支由 CI 自动构建部署，也可用 `workflow_dispatch` 手动触发。
+**因此把关在推送之前：所有改动先本地验证，收到用户明确“可以推送”后才提交并推送。**
 
 ## 本地运行
 
