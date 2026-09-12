@@ -13,7 +13,13 @@ const moods = [
 export function DiscoverPage() {
   const { playDemo, loadTrack } = useMusicActions();
   const tracks = useAppStore((state) => state.tracks);
+  const recent = useAppStore((state) => state.recent);
   const setView = useAppStore((state) => state.setView);
+  // Prefer what the user actually played; fall back to what they just imported.
+  const byId = new Map(tracks.map((track) => [track.id, track]));
+  const played = recent.map((id) => byId.get(id)).filter((track) => track !== undefined).slice(0, 3);
+  const highlight = played.length ? played : tracks.slice(0, 3);
+  const highlightTitle = played.length ? '最近在听' : '最近加入';
   return <section className="page discover-page">
     <div className="welcome-line"><span><Leaf size={14} /> A LITTLE ROOM FOR SOUND</span><span>你的音乐，你的节奏。</span></div>
     <div className="hero-panel">
@@ -42,8 +48,8 @@ export function DiscoverPage() {
       </button>)}
     </div>
     <div className="discovery-bottom">
-      <section><header className="section-heading"><div><h2>最近加入</h2><p>每一首，都是你的选择。</p></div><button type="button" onClick={() => setView('library')}>全部曲库 <ArrowUpRight size={16} /></button></header>
-      <div className="recent-list">{tracks.slice(0, 3).map((track, index) => <button type="button" key={track.id} onClick={() => void loadTrack(track.id)}><b>0{index + 1}</b><Artwork artwork={track.artwork} /><span><strong>{track.title}</strong><small>{track.artist}</small></span><em>{track.album}</em><i><Play size={14} /></i></button>)}
+      <section data-testid="discover-recent"><header className="section-heading"><div><h2>{highlightTitle}</h2><p>{played.length ? '按你最近播放的顺序。' : '每一首，都是你的选择。'}</p></div><button type="button" onClick={() => setView('library')}>全部曲库 <ArrowUpRight size={16} /></button></header>
+      <div className="recent-list">{highlight.map((track, index) => <button type="button" key={track.id} onClick={() => void loadTrack(track.id)}><b>0{index + 1}</b><Artwork artwork={track.artwork} /><span><strong>{track.title}</strong><small>{track.artist}</small></span><em>{track.album}</em><i><Play size={14} /></i></button>)}
       {!tracks.length && <div className="empty-row"><span>你的下一首心动，还在路上。</span><small>导入本地音乐，在这里收藏日常的声音。</small><ImportButton compact /></div>}</div></section>
       <button className="studio-invite" type="button" onClick={() => setView('dj')}><span>FROM LISTENER TO CREATOR</span><AudioLines /><h3>不只听，也来玩。</h3><p>进入 DJ 工作台，让每个节拍都有你的参与。</p><b>打开 DJ 台 <ArrowUpRight size={16} /></b></button>
     </div>

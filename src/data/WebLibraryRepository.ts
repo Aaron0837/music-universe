@@ -156,6 +156,14 @@ export class WebLibraryRepository implements LibraryRepository {
     await this.db.playlists.delete(id);
   }
 
+  async getSetting<T>(key: string): Promise<T | undefined> {
+    return (await this.db.settings.get(key))?.value as T | undefined;
+  }
+
+  async saveSetting<T>(key: string, value: T): Promise<void> {
+    await this.db.settings.put({ key, value });
+  }
+
   async storage(): Promise<{ usage: number; quota: number; persistent: boolean }> {
     const estimate = await navigator.storage?.estimate?.();
     const persistent = await navigator.storage?.persisted?.() ?? false;

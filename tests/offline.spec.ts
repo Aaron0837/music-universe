@@ -37,12 +37,11 @@ test.describe('installable app shell', () => {
     }
 
     await waitForServiceWorker(page);
-    const shell = await page.evaluate(async () => {
-      const registration = await navigator.serviceWorker.ready;
-      return { scope: registration.scope, active: registration.active?.state ?? null };
-    });
-    expect(shell.active).toBe('activated');
-    expect(shell.scope).toContain(server.origin);
+    // `navigator.serviceWorker.ready` can resolve while WebKit still reports
+    // 'activating', so the state has to be polled rather than read once.
+    await expect.poll(async () => page.evaluate(async () => (await navigator.serviceWorker.ready).active?.state ?? null)).toBe('activated');
+    const scope = await page.evaluate(async () => (await navigator.serviceWorker.ready).scope);
+    expect(scope).toContain(server.origin);
   });
 
   test('cold-starts offline from the cache', async ({ page, context, browserName }) => {

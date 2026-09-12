@@ -1,6 +1,15 @@
 export type DeckId = 'A' | 'B';
 export type ThemeMode = 'light' | 'dark' | 'system';
-export type AppView = 'discover' | 'library' | 'playlists' | 'dj' | 'visuals' | 'settings';
+export type AppView = 'discover' | 'library' | 'playlists' | 'collection' | 'dj' | 'visuals' | 'settings';
+
+/**
+ * How a queue advances past the track that just finished.
+ * - `sequential` plays the list once and then stops
+ * - `repeat-all` wraps back to the first entry
+ * - `repeat-one` replays the current entry
+ * - `shuffle` walks a random permutation, reshuffling only once it is exhausted
+ */
+export type PlayMode = 'sequential' | 'repeat-one' | 'repeat-all' | 'shuffle';
 
 export interface BeatGrid {
   bpm: number;
@@ -43,6 +52,8 @@ export interface DeckQueue {
   trackIds: string[];
   deck: DeckId;
   index: number;
+  /** Shuffle permutation of `trackIds` positions; only present in shuffle mode. */
+  order?: number[];
 }
 
 export interface DeckSnapshot {

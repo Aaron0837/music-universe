@@ -31,6 +31,8 @@ export async function loadTrackInto(
     if (!loaded || request !== requests[deckId]) return false;
     useAppStore.getState().setActiveDeck(deckId);
     useAppStore.getState().setActiveTrack(track.id);
+    // Repeated skips should not spam the history with the same track.
+    useAppStore.getState().recordPlay(track.id);
     if (autoplay) await mixer.decks[deckId].play();
     notify(`${track.title} 已载入 Deck ${deckId}`);
     return true;

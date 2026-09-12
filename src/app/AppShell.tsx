@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { usePreferences } from '../stores/usePreferences';
-import { Album, AudioLines, Library, ListMusic, Menu, Moon, Search, Settings, Sparkles, Sun, X } from 'lucide-react';
+import { Album, AudioLines, Heart, Library, ListMusic, Menu, Moon, Search, Settings, Sparkles, Sun, X } from 'lucide-react';
 import type { PropsWithChildren } from 'react';
 import { ImportButton } from '../components/library/ImportButton';
 import { PlayerDock } from '../components/player/PlayerDock';
@@ -11,6 +11,7 @@ import type { AppView } from '../types/models';
 const navigation: Array<{ id: AppView; label: string; icon: typeof Album }> = [
   { id: 'discover', label: '发现', icon: Sparkles },
   { id: 'library', label: '曲库', icon: Library },
+  { id: 'collection', label: '我的音乐', icon: Heart },
   { id: 'playlists', label: '播放列表', icon: ListMusic },
   { id: 'dj', label: 'DJ 台', icon: AudioLines },
   { id: 'visuals', label: '可视化', icon: Album },

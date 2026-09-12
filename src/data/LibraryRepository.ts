@@ -11,6 +11,9 @@ export interface LibraryRepository {
   getLyrics(id: string): Promise<string | undefined>;
   /** Replace a track's lyric text; an empty string clears it. */
   saveLyrics(id: string, text: string): Promise<void>;
+  /** Small persisted preferences (favourites, history, play mode). */
+  getSetting<T>(key: string): Promise<T | undefined>;
+  saveSetting<T>(key: string, value: T): Promise<void>;
   removeTrack(id: string): Promise<void>;
   listPlaylists(): Promise<Playlist[]>;
   createPlaylist(name: string): Promise<Playlist>;

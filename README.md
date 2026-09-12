@@ -48,6 +48,10 @@ node scripts/verify-production.mjs
 - **包体瘦身**：构建不再发布 sourcemap（原先 5.7 MB，占部署总量 78%），并把 three.js 单独拆 chunk；部署总量 7.34 MB → 1.62 MB，`VisualsPage` 513 KB → 23 KB。需要调试时 `MU_SOURCEMAPS=1 npm run build`。
 - **沉浸式播放大屏**：点底部播放器封面或按 `V` 打开全屏播放面（`Esc` 关闭）。封面模糊成背景光，大封面随播放缓慢旋转（关掉减少动态效果即静止）。**逐行歌词**跟随播放位置居中滚动，当前行有卡拉 OK 扫光；点任意一句即可跳到该时间点。没有歌词时可直接粘贴 LRC 或纯文本保存，编辑与清除都在同一处，示例曲目不可保存。
 - **封面取色主题**：正在播放的封面决定全局 `--accent` / `--accent-2`，并额外给出 `--glow` / `--tint` 供背景光晕与底纹使用。切换明暗主题会**重算**配色，而不是沿用为另一种背景选的颜色。
+- **播放模式**：底部播放器多了一个按钮，循环顺序 → 列表循环 → 单曲循环 → 随机播放（快捷键 `M`）。随机不是“每首随机抽”，而是把队列洗成一个排列，**走完一轮才会重新洗牌**，所以每首都会播到、不会重复；没有队列时（从曲库直接播一首）单曲循环依然生效。
+- **喜欢与最近播放**：曲库每行有心形按钮，还能“只看喜欢”。左侧新增 **我的音乐** 页，集中展示喜欢的歌与最近播放。最近播放按真实播放记录排序，**重听会提到最前而不是新增一条**；删掉曲目时两处会自动清理。
+- **睡眠定时**：15 / 30 / 45 / 60 分钟，到点自动暂停两个 Deck，卡片上带倒计时。
+- 发现页的“最近加入”改为“最近在听”，显示你真正播过的歌，而不再只是导入顺序的前三首。
 
 ## 使用边界
 
@@ -58,6 +62,8 @@ node scripts/verify-production.mjs
 - MP3 / WAV / FLAC / M4A / OGG 的具体可解码范围取决于浏览器；暂无额外 WASM 解码器。
 - 曲库离线恢复指已经打开或缓存的应用可读取本地文件；Service Worker 已支持应用外壳的冷启动离线，但音频仍须先导入本机。
 - 播放列表支持增删与排序，但尚无嵌套歌单、导入导出与云同步。本轮不增加 Tauri 或 WASM。
+- 播放模式只作用于“队列”（歌单或整张曲库顺序播放）。从曲库直接点单首播放时没有队列，此时只有单曲循环有意义，其余三种等同播完即停。
+- 喜欢、最近播放与播放模式存在本地数据库的 `settings` 表（Dexie v3）。保存是**不阻塞播放**的后台写入，所以刚点完喜欢就强制刷新页面，极少数情况下可能抢先于写入；正常使用无影响。
 - 歌词来自文件内嵌（ID3v2 USLT / SYLT、Vorbis `LYRICS`、MP4 `©lyr`），**不联网抓取**。没有内嵌歌词时可手动粘贴 LRC；纯文本歌词没有时间轴，不能点击跳转。
 - 取色主题读取封面像素。纯灰 / 纯黑白封面没有可用的色相，会回退到界面默认强调色，而不是凭空造一个颜色。`--accent` 与 `--accent-2` 始终经过对比度校正（≥ 4.5:1），`--glow` / `--tint` 只作装饰、不参与文字对比。
 - 自动化输出电平检查不能替代真实扬声器试听。跨浏览器测试跑在 Chromium、Firefox 与 WebKit（Safari 引擎）上，但 **Playwright 的 Windows WebKit 不含 Web Audio**，因此 WebKit 只覆盖外壳、离线与降级路径；真实 Safari / iOS / Android 实机仍需人工验收。
@@ -85,7 +91,8 @@ LibraryRepository → Dexie v3 ← beat analysis Worker
 - `src/data/`：迁移与缓存；音频资源不进入 UI store。Dexie 已到 v3（v3 新增歌词表，不删除旧数据）。
 - `src/presets/`：原创预设。新增预设实现 `UniversePreset`，注册一次；创建时分配，更新时复用，销毁时释放 geometry / material。
 - `src/audio/keylock/`：保调变速。`keyLockMath` 纯函数决定时钟速率与 worklet 音高；`worklet.ts` **必须动态 import** SoundTouch——该包在模块顶层继承 `AudioWorkletNode`，静态引入会让不支持的浏览器在 React 挂载前白屏。
-- `src/playlists/`：`playlistMath` 是纯排序 / 去重规则，`queue.ts` 负责连放与自然播完的续播。
+- `src/playlists/`：`playlistMath` 是纯排序 / 去重 / 播放模式与洗牌规则，`queue.ts` 负责连放与自然播完的续播；`handleTrackEnd` 是唯一入口，同时处理“有队列”和“单曲重播”两种情况。
+- `src/library/collection.ts`：喜欢 / 最近播放 / 睡眠定时的纯函数（去重、置顶、上限、修剪）。
 - `src/lyrics/`：`lrc.ts` 把各容器格式统一成 LRC 再解析（`parseLrc` / `activeLineIndex` / `lineProgress` 都是纯函数），`useLyrics.ts` 负责读取与缓存。
 - `src/theme/`：`palette.ts` 是纯色math（分桶取主色、`ensureContrast` 拉到达标、`buildPalette` 出四个 token），`artworkTheme.ts` 写 CSS 变量，`useArtworkPalette.ts` 只负责把封面画进 canvas 取像素。
 - `src/components/player/NowPlaying.tsx`：播放大屏。外层只订阅 `nowPlaying` 开关，内层才订阅每帧快照——否则隐藏时也会每秒重渲染五次。
@@ -111,8 +118,8 @@ node scripts/canvas-proof.mjs
 
 它对每个预设单独截图 `.visual-stage canvas`，再在 Chromium 里解码并统计亮度分布；任一预设标准差过低或全黑则脚本以非零码退出。注意不要改用 `drawImage` 直接读在线 canvas——在 `preserveDrawingBuffer: false`（默认）下会假阴性报全黑。
 
-Vitest 覆盖播放时钟、速率斜坡、Sync 数学、循环、拍点检测、游戏窗口、保调变速速率解析、播放列表排序、**LRC 解析与主句定位**、**取色与对比度校正**及预设资源释放。
-Playwright 在 Chromium、Firefox 与 WebKit 三个引擎上覆盖真实示例 / 文件音频输出、离线读取、迁移、Perfect 输出、拖放、触控组合、主题、布局、可视化切换、保调变速基频、播放列表全流程、**歌词保存 / 高亮 / 跳转与取色主题**、PWA 离线冷启动，以及无 AudioWorklet / 无 Web Audio 时的降级路径。仍需人工检查听感和真实设备性能，不能以自动测试通过宣称全平台验收。
+Vitest 覆盖播放时钟、速率斜坡、Sync 数学、循环、拍点检测、游戏窗口、保调变速速率解析、播放列表排序、LRC 解析与主句定位、取色与对比度校正、**播放模式与洗牌排列**、**喜欢 / 历史 / 睡眠定时规则**及预设资源释放。
+Playwright 在 Chromium、Firefox 与 WebKit 三个引擎上覆盖真实示例 / 文件音频输出、离线读取、迁移、Perfect 输出、拖放、触控组合、主题、布局、可视化切换、保调变速基频、播放列表全流程、歌词保存 / 高亮 / 跳转与取色主题、**喜欢 / 历史 / 播放模式 / 睡眠定时**、PWA 离线冷启动，以及无 AudioWorklet / 无 Web Audio 时的降级路径。仍需人工检查听感和真实设备性能，不能以自动测试通过宣称全平台验收。
 
 ## 许可
 

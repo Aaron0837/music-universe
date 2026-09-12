@@ -1,9 +1,10 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { getMixer, peekMixer } from '../audio/engine/runtime';
-import { advanceQueue } from '../playlists/queue';
+import { handleTrackEnd } from '../playlists/queue';
 import { usePreferences } from '../stores/usePreferences';
 import { libraryRepository } from '../data/WebLibraryRepository';
-import { useAppStore } from '../stores/useAppStore';
+import { pruneCollection } from '../library/collection';
+import { collectionSink, useAppStore } from '../stores/useAppStore';
 import { AppShell } from './AppShell';
 import { NowPlaying } from '../components/player/NowPlaying';
 import { DiscoverPage } from '../pages/DiscoverPage';
@@ -13,6 +14,7 @@ import { LibraryPage } from '../pages/LibraryPage';
 
 const DJPage = lazy(() => import('../pages/DJPage').then((module) => ({ default: module.DJPage })));
 const PlaylistsPage = lazy(() => import('../pages/PlaylistsPage').then((module) => ({ default: module.PlaylistsPage })));
+const CollectionPage = lazy(() => import('../pages/CollectionPage').then((module) => ({ default: module.CollectionPage })));
 const SettingsPage = lazy(() => import('../pages/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const VisualsPage = lazy(() => import('../pages/VisualsPage').then((module) => ({ default: module.VisualsPage })));
 
@@ -31,6 +33,31 @@ export function App() {
   useArtworkPalette(artwork);
 
   useEffect(() => { void libraryRepository.listTracks().then(setTracks).catch(() => notify('无法打开本地曲库')); }, [notify, setTracks]);
+
+  // Favourites, history and play mode live in the same local database as the music.
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([
+      libraryRepository.getSetting<string[]>('favorites'),
+      libraryRepository.getSetting<string[]>('recent'),
+      libraryRepository.getSetting<string>('playMode'),
+      libraryRepository.listTracks(),
+    ]).then(([favorites, recent, playMode, tracks]) => {
+      if (cancelled) return;
+      // Entries whose track was deleted must not linger as broken rows.
+      const pruned = pruneCollection(favorites ?? [], recent ?? [], tracks.map((track) => track.id));
+      const mode = playMode === 'shuffle' || playMode === 'repeat-all' || playMode === 'repeat-one' ? playMode : 'sequential';
+      useAppStore.getState().hydrateCollection(pruned.favorites, pruned.recent, mode);
+    }).catch(() => { /* an unreadable store just starts empty */ });
+    collectionSink.save = (favorites, recent, playMode) => {
+      void Promise.all([
+        libraryRepository.saveSetting('favorites', favorites),
+        libraryRepository.saveSetting('recent', recent),
+        libraryRepository.saveSetting('playMode', playMode),
+      ]).catch(() => { /* losing a bookmark must not break playback */ });
+    };
+    return () => { cancelled = true; collectionSink.save = undefined; };
+  }, []);
   useEffect(() => {
     const media = matchMedia('(prefers-color-scheme: dark)');
     const apply = () => {
@@ -53,9 +80,9 @@ export function App() {
       if (!subscribed) {
         unsubscribeA = mixer.decks.A.onSnapshot((snapshot) => updateDeck('A', snapshot));
         unsubscribeB = mixer.decks.B.onSnapshot((snapshot) => updateDeck('B', snapshot));
-        // Only a natural end-of-track advances the playlist; pause and seek do not.
-        mixer.decks.A.onTrackEnd = () => { void advanceQueue('A'); };
-        mixer.decks.B.onTrackEnd = () => { void advanceQueue('B'); };
+        // Only a natural end-of-track advances playback; pause and seek do not.
+        mixer.decks.A.onTrackEnd = () => { void handleTrackEnd('A'); };
+        mixer.decks.B.onTrackEnd = () => { void handleTrackEnd('B'); };
         subscribed = true;
       }
       updateDeck('A', mixer.decks.A.snapshot());
@@ -67,6 +94,8 @@ export function App() {
       if (event.key === '1' || event.key === '2') useAppStore.getState().setActiveDeck(event.key === '1' ? 'A' : 'B');
       // "V" opens the immersive player, matching the launcher button in the dock.
       if (event.key === 'v' || event.key === 'V') useAppStore.getState().setNowPlaying(!useAppStore.getState().nowPlaying);
+      // "M" cycles the play mode, matching the transport button.
+      if (event.key === 'm' || event.key === 'M') useAppStore.getState().cyclePlayMode();
     };
     window.addEventListener('keydown', keydown);
     return () => { window.clearInterval(interval); window.removeEventListener('keydown', keydown); unsubscribeA?.(); unsubscribeB?.(); };
@@ -116,7 +145,21 @@ export function App() {
     const timeout = window.setTimeout(() => notify(undefined), 3200);
     return () => window.clearTimeout(timeout);
   }, [toast, notify]);
+  // Sleep timer: pause both decks once the deadline passes. Polling a timestamp
+  // is cheaper and steadier than a long setTimeout, which drifts when suspended.
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      const { sleepEndsAt, clearSleepTimer, notify: say } = useAppStore.getState();
+      if (!sleepEndsAt || Date.now() < sleepEndsAt) return;
+      clearSleepTimer();
+      const mixer = peekMixer();
+      mixer?.decks.A.pause();
+      mixer?.decks.B.pause();
+      say('睡眠定时已到，已暂停播放');
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, []);
 
-  const page = view === 'discover' ? <DiscoverPage /> : view === 'library' ? <LibraryPage /> : view === 'playlists' ? <PlaylistsPage /> : view === 'dj' ? <DJPage /> : view === 'visuals' ? <VisualsPage /> : <SettingsPage />;
+  const page = view === 'discover' ? <DiscoverPage /> : view === 'library' ? <LibraryPage /> : view === 'playlists' ? <PlaylistsPage /> : view === 'collection' ? <CollectionPage /> : view === 'dj' ? <DJPage /> : view === 'visuals' ? <VisualsPage /> : <SettingsPage />;
   return <><AppShell><Suspense fallback={<div className="page-loading">正在准备体验…</div>}>{page}</Suspense></AppShell><NowPlaying />{draggingFiles && <div className="global-drop"><strong>释放以导入音乐</strong><span>文件只会保存在当前设备</span></div>}</>;
 }
