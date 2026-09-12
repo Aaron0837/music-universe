@@ -39,6 +39,9 @@ node scripts/verify-production.mjs
 - Perfect ±80 ms / Great ±150 ms；重复击键不重复得分、漏击断连。Perfect 使用独立受限底鼓输出，Harmony 附加合成和弦；不修改原曲。
 - 音游放大、Esc 退出、焦点约束；F 只击打第四轨，全屏有独立按钮。390px 下使用 Deck A / 音游 / Mixer / Deck B 分页。
 - IndexedDB v2 迁移保留旧曲库；音频按浏览器支持解码，每个文件最多 100 MB。底部控制跟随当前 Deck。
+- 三维视觉走真实 HDR 后处理管线：`EffectComposer` + `UnrealBloomPass` 泛光 + ACES 色调映射，再加一道色差 / 暗角 / 颗粒的调色 pass，而不是靠加色混合硬凑辉光。泛光强度跟随响度与拍点呼吸。
+- 新增两个预设：Hyper Tunnel（顶点着色器生成星流，逐帧只更新 uniform）与 Aurora Veil（片元着色器程序化极光）。预设统一在 `src/presets/index.ts` 注册一次。
+- 低质量档位直接跳过整条后处理管线，保留原先的裸渲染路径兜底。
 
 ## 使用边界
 
@@ -65,6 +68,8 @@ LibraryRepository → Dexie v2 ← beat analysis Worker
 ```
 
 - `src/styles/`：tokens、layout、components、pages、dj 分层；不在旧样式末尾堆叠覆盖。
+- `src/rendering/`：渲染循环与后处理管线；`GradePass.ts` 是调色着色器。
+- `src/presets/`：原创预设，在 `src/presets/index.ts` 注册一次；创建时分配，更新时复用，销毁时释放 geometry / material。
 - `src/audio/engine/`：音频节点、积分播放时钟、同步数学。
 - `src/audio/analysis/`：后台拍点与波形分析。
 - `src/components/rhythm-game/`：可测试判定内核与 Canvas 舞台。
@@ -83,6 +88,14 @@ node scripts/capture-preview.mjs
 ```
 
 截图与鼠标跟随短录屏生成于 `test-results/review/`（Git 忽略）：首页、曲库、设置、DJ、放大舞台，以及 390 / 768 / 1440 / 1920 宽度。截图曲目为脚本生成的测试音频，不是用户曲库。视频是视觉演示，不含扬声器录音。
+
+验证三维预设真的在出画（而不是挂上一个空白 canvas）：
+
+```bash
+node scripts/canvas-proof.mjs
+```
+
+它对每个预设单独截图 `.visual-stage canvas`，再在 Chromium 里解码并统计亮度分布；任一预设标准差过低或全黑则脚本以非零码退出。注意不要改用 `drawImage` 直接读在线 canvas——在 `preserveDrawingBuffer: false`（默认）下会假阴性报全黑。
 
 Vitest 覆盖播放时钟、速率斜坡、Sync 数学、循环、拍点检测、游戏窗口及预设资源释放。
 Playwright 覆盖真实示例 / 文件音频输出、离线读取、迁移、Perfect 输出、拖放、触控组合、主题、布局与可视化切换。仍需人工检查听感和真实设备性能，不能以自动测试通过宣称全平台验收。

@@ -1,24 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
 import { peekMixer } from '../../audio/engine/runtime';
-import { nebulaPreset } from '../../presets/nebula';
-import { gravityPreset } from '../../presets/gravity';
-import { bloomPreset } from '../../presets/bloom';
-import { PresetRegistry } from '../../presets/registry';
+import { createPresetRegistry } from '../../presets';
 import { UniverseRenderer } from '../../rendering/UniverseRenderer';
 import { AppState } from '../../state/AppState';
 import { usePreferences } from '../../stores/usePreferences';
 import { CanvasVisualizer } from './CanvasVisualizer';
 import type { AudioFrame } from '../../types';
 
-export function UniverseStage({ preset }: { preset: 'nebula' | 'gravity' | 'bloom' }) {
+export type UniversePresetId = 'nebula' | 'gravity' | 'bloom' | 'tunnel' | 'aurora';
+
+export function UniverseStage({ preset }: { preset: UniversePresetId }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [fallback, setFallback] = useState(false);
   const reduced = usePreferences((state) => state.reducedMotion);
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas || fallback) return;
-    const registry = new PresetRegistry();
-    registry.register(nebulaPreset); registry.register(gravityPreset); registry.register(bloomPreset);
+    const registry = createPresetRegistry();
     const state = new AppState();
     const media = matchMedia('(prefers-reduced-motion: reduce)');
     const apply = () => { state.reducedMotion = reduced || media.matches; };

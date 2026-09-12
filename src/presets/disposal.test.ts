@@ -3,8 +3,10 @@ import * as THREE from 'three';
 import { nebulaPreset } from './nebula';
 import { gravityPreset } from './gravity';
 import { bloomPreset } from './bloom';
+import { tunnelPreset } from './tunnel';
+import { auroraPreset } from './aurora';
 describe('preset resources', () => {
-  it.each([nebulaPreset, gravityPreset, bloomPreset])('releases $name resources on repeated switches', (preset) => {
+  it.each([nebulaPreset, gravityPreset, bloomPreset, tunnelPreset, auroraPreset])('releases $name resources on repeated switches', (preset) => {
     const scene = new THREE.Scene();
     for (let iteration = 0; iteration < 5; iteration++) {
       const instance = preset.create({ scene, camera: new THREE.PerspectiveCamera(), renderer: {} as THREE.WebGLRenderer, quality: 'low', hue: () => 150, sensitivity: () => 1 });

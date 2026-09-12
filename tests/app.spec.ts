@@ -264,7 +264,7 @@ test('FX state survives navigation and every visual preset mounts without errors
   await nav(page, '设置'); await nav(page, 'DJ 台 PRO');
   await expect(page.getByLabel('Deck A delay', { exact: true })).toHaveValue('0.3');
   await nav(page, '可视化');
-  for (let round = 0; round < 2; round++) for (const name of ['Peak', 'Orb', 'Waves', 'Plasma', 'Nebula', 'Gravity', 'Cyber Bloom']) {
+  for (let round = 0; round < 2; round++) for (const name of ['Peak', 'Orb', 'Waves', 'Plasma', 'Nebula', 'Gravity', 'Cyber Bloom', 'Hyper Tunnel', 'Aurora Veil']) {
     await page.locator('.visual-selector').getByRole('button', { name: new RegExp(name) }).click();
     await expect(page.locator('.visual-stage canvas')).toHaveCount(1);
     await page.waitForTimeout(80);
