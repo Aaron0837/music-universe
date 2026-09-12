@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { getMixer } from '../audio/engine/runtime';
+import { getMixer, peekMixer } from '../audio/engine/runtime';
+import { usePreferences } from '../stores/usePreferences';
 import { libraryRepository } from '../data/WebLibraryRepository';
 import { useAppStore } from '../stores/useAppStore';
 import { AppShell } from './AppShell';
@@ -14,6 +15,8 @@ const VisualsPage = lazy(() => import('../pages/VisualsPage').then((module) => (
 export function App() {
   const view = useAppStore((state) => state.view);
   const theme = useAppStore((state) => state.theme);
+  const toast = useAppStore((state) => state.toast);
+  const reduced = usePreferences((state) => state.reducedMotion);
   const setTracks = useAppStore((state) => state.setTracks);
   const updateDeck = useAppStore((state) => state.updateDeck);
   const notify = useAppStore((state) => state.notify);
@@ -21,26 +24,38 @@ export function App() {
 
   useEffect(() => { void libraryRepository.listTracks().then(setTracks).catch(() => notify('无法打开本地曲库')); }, [notify, setTracks]);
   useEffect(() => {
-    const resolved = theme === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme;
-    document.documentElement.dataset.theme = resolved;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolved === 'dark' ? '#080a10' : '#f5f5f7');
+    const media = matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => {
+      const resolved = theme === 'system' ? (media.matches ? 'dark' : 'light') : theme;
+      document.documentElement.dataset.theme = resolved;
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolved === 'dark' ? '#151d19' : '#f7f9f5');
+    };
+    apply(); media.addEventListener('change', apply);
+    return () => media.removeEventListener('change', apply);
   }, [theme]);
+  useEffect(() => { document.documentElement.dataset.reduced = String(reduced); }, [reduced]);
   useEffect(() => {
-    const mixer = getMixer();
-    mixer.decks.A.onSnapshot((snapshot) => updateDeck('A', snapshot));
-    mixer.decks.B.onSnapshot((snapshot) => updateDeck('B', snapshot));
+    let subscribed = false;
+    let unsubscribeA: (() => void) | undefined, unsubscribeB: (() => void) | undefined;
     const interval = window.setInterval(() => {
+      const mixer = peekMixer();
+      if (!mixer) return;
+      if (!subscribed) {
+        unsubscribeA = mixer.decks.A.onSnapshot((snapshot) => updateDeck('A', snapshot));
+        unsubscribeB = mixer.decks.B.onSnapshot((snapshot) => updateDeck('B', snapshot));
+        subscribed = true;
+      }
       updateDeck('A', mixer.decks.A.snapshot());
       updateDeck('B', mixer.decks.B.snapshot());
     }, 180);
     const keydown = (event: KeyboardEvent) => {
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
-      if (event.code === 'Space') { event.preventDefault(); void mixer.decks.A.toggle(); }
-      if (event.key.toLowerCase() === 'f') void (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
+      if ((event.target instanceof Element && event.target.closest('input,textarea,select,button,[contenteditable="true"]')) || event.repeat) return;
+      if (event.code === 'Space') { event.preventDefault(); void getMixer().decks[useAppStore.getState().activeDeck].toggle().catch(() => notify('请再次点击播放以启用声音')); }
+      if (event.key === '1' || event.key === '2') useAppStore.getState().setActiveDeck(event.key === '1' ? 'A' : 'B');
     };
     window.addEventListener('keydown', keydown);
-    return () => { window.clearInterval(interval); window.removeEventListener('keydown', keydown); };
-  }, [updateDeck]);
+    return () => { window.clearInterval(interval); window.removeEventListener('keydown', keydown); unsubscribeA?.(); unsubscribeB?.(); };
+  }, [updateDeck, notify]);
   useEffect(() => {
     let depth = 0;
     const enter = (event: DragEvent) => {
@@ -55,6 +70,7 @@ export function App() {
     };
     const over = (event: DragEvent) => event.preventDefault();
     const drop = async (event: DragEvent) => {
+      if (!event.dataTransfer?.types.includes('Files')) return;
       event.preventDefault();
       depth = 0;
       setDraggingFiles(false);
@@ -84,7 +100,7 @@ export function App() {
     if (!useAppStore.getState().toast) return;
     const timeout = window.setTimeout(() => notify(undefined), 3200);
     return () => window.clearTimeout(timeout);
-  });
+  }, [toast, notify]);
 
   const page = view === 'discover' ? <DiscoverPage /> : view === 'library' ? <LibraryPage /> : view === 'playlists' ? <PlaylistsPage /> : view === 'dj' ? <DJPage /> : view === 'visuals' ? <VisualsPage /> : <SettingsPage />;
   return <><AppShell><Suspense fallback={<div className="page-loading">正在准备体验…</div>}>{page}</Suspense></AppShell>{draggingFiles && <div className="global-drop"><strong>释放以导入音乐</strong><span>文件只会保存在当前设备</span></div>}</>;

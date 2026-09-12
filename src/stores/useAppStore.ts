@@ -13,12 +13,19 @@ const emptyDeck: DeckSnapshot = {
   mid: 0,
   high: 0,
   filter: 1,
+  effects: { delay: 0, reverb: 0, flanger: 0 },
   loopBeats: 4,
   loopEnabled: false,
   reverse: false,
+  status: 'empty',
+  analysisPending: false,
+  cues: [null, null, null, null],
+  revision: 0,
 };
 
 interface AppStore {
+  activeDeck: DeckId;
+  setActiveDeck(id: DeckId): void;
   view: AppView;
   theme: ThemeMode;
   sidebarOpen: boolean;
@@ -44,6 +51,8 @@ interface AppStore {
 const savedTheme = (localStorage.getItem('mu-theme') as ThemeMode | null) ?? 'light';
 
 export const useAppStore = create<AppStore>((set) => ({
+  activeDeck: 'A',
+  setActiveDeck: (activeDeck) => set({ activeDeck }),
   view: 'discover',
   theme: savedTheme,
   sidebarOpen: window.innerWidth >= 840,

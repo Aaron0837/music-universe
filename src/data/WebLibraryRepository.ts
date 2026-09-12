@@ -1,14 +1,16 @@
 import Dexie, { type EntityTable } from 'dexie';
 import type { Playlist, StoredTrack, Track } from '../types/models';
 import type { LibraryRepository } from './LibraryRepository';
+import type { BeatGrid } from '../types/models';
+import type { TrackAnalysis } from '../audio/analysis/beatAnalysis';
 
 interface AudioRecord { trackId: string; blob: Blob }
 interface ArtworkRecord { trackId: string; blob: Blob }
 interface WaveformRecord { trackId: string; peaks: Float32Array<ArrayBuffer> }
-interface AnalysisRecord { trackId: string; bpm?: number; musicalKey?: string; version: number }
+interface AnalysisRecord { trackId: string; bpm?: number; musicalKey?: string; grid?: BeatGrid; version: number }
 interface SettingRecord { key: string; value: unknown }
 
-class MusicDatabase extends Dexie {
+export class MusicDatabase extends Dexie {
   tracks!: EntityTable<Track, 'id'>;
   audioBlobs!: EntityTable<AudioRecord, 'trackId'>;
   artworks!: EntityTable<ArtworkRecord, 'trackId'>;
@@ -17,8 +19,8 @@ class MusicDatabase extends Dexie {
   analyses!: EntityTable<AnalysisRecord, 'trackId'>;
   settings!: EntityTable<SettingRecord, 'key'>;
 
-  constructor() {
-    super('music-universe-library');
+  constructor(name = 'music-universe-library') {
+    super(name);
     this.version(1).stores({
       tracks: 'id, title, artist, album, addedAt, bpm',
       audioBlobs: 'trackId',
@@ -27,6 +29,10 @@ class MusicDatabase extends Dexie {
       waveforms: 'trackId',
       analyses: 'trackId, version',
       settings: 'key',
+    });
+    // Add a versioned grid without deleting legacy tracks, blobs or playlists.
+    this.version(2).stores({ analyses: 'trackId, version' }).upgrade(async (transaction) => {
+      await transaction.table('analyses').toCollection().modify((record) => { record.version = 0; });
     });
   }
 }
@@ -38,6 +44,7 @@ export class WebLibraryRepository implements LibraryRepository {
     const { parseBlob } = await import('music-metadata');
     const imported: Track[] = [];
     for (const file of files) {
+      if (file.size > 100 * 1024 * 1024) throw new Error(`${file.name} 超过 100 MB 上限`);
       const estimate = await this.storage();
       if (estimate.quota > 0 && estimate.usage + file.size > estimate.quota * 0.9) {
         throw new Error(`存储空间不足，无法导入 ${file.name}`);
@@ -92,6 +99,19 @@ export class WebLibraryRepository implements LibraryRepository {
         this.db.waveforms.delete(id),
         this.db.analyses.delete(id),
       ]);
+    });
+  }
+
+  async getAnalysis(id: string): Promise<TrackAnalysis | undefined> {
+    const [analysis, waveform] = await Promise.all([this.db.analyses.get(id), this.db.waveforms.get(id)]);
+    return analysis?.version === 1 && waveform ? { grid: analysis.grid, peaks: waveform.peaks } : undefined;
+  }
+
+  async saveAnalysis(id: string, analysis: TrackAnalysis): Promise<void> {
+    await this.db.transaction('rw', this.db.tracks, this.db.analyses, this.db.waveforms, async () => {
+      if (!await this.db.tracks.get(id)) return;
+      await this.db.analyses.put({ trackId: id, grid: analysis.grid, bpm: analysis.grid?.bpm, version: 1 });
+      await this.db.waveforms.put({ trackId: id, peaks: analysis.peaks });
     });
   }
 

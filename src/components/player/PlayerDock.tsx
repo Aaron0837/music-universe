@@ -1,4 +1,4 @@
-import { Heart, ListMusic, Pause, Play, SkipBack, SkipForward, Volume2 } from 'lucide-react';
+import { ListMusic, Pause, Play, SkipBack, SkipForward, Volume2 } from 'lucide-react';
 import { getMixer } from '../../audio/engine/runtime';
 import { useMusicActions } from '../../hooks/useMusicActions';
 import { useAppStore } from '../../stores/useAppStore';
@@ -11,10 +11,12 @@ function formatTime(seconds: number): string {
 }
 
 export function PlayerDock() {
-  const { playDemo } = useMusicActions();
+  const { playDemo, loadTrack } = useMusicActions();
   const tracks = useAppStore((state) => state.tracks);
-  const activeId = useAppStore((state) => state.activeTrackId);
-  const deck = useAppStore((state) => state.decks.A);
+  const activeDeck = useAppStore((state) => state.activeDeck);
+  const deck = useAppStore((state) => state.decks[activeDeck]);
+  const activeId = deck.trackId;
+  const notify = useAppStore((state) => state.notify);
   const volume = useAppStore((state) => state.masterVolume);
   const setVolume = useAppStore((state) => state.setMasterVolume);
   const active = tracks.find((track) => track.id === activeId);
@@ -22,19 +24,24 @@ export function PlayerDock() {
   const artist = active?.artist ?? (activeId === 'demo' ? 'Music Universe Original' : '选择本地音乐或示例');
   const progress = deck.duration ? deck.position / deck.duration : 0;
   const toggle = async () => {
-    if (!deck.trackId) return playDemo();
-    await getMixer().decks.A.toggle();
+    if (!deck.trackId) return playDemo(activeDeck);
+    try { await getMixer().decks[activeDeck].toggle(); } catch { notify('声音启动失败，请再次点击播放'); }
   };
   const updateVolume = (value: number) => {
     setVolume(value);
     getMixer().setMasterVolume(value);
   };
+  const skip = (delta: number) => {
+    if (!tracks.length) return;
+    const index = tracks.findIndex((track) => track.id === activeId);
+    void loadTrack(tracks[(Math.max(0, index) + delta + tracks.length) % tracks.length].id, activeDeck);
+  };
   return (
     <footer className="player-dock">
-      <div className="dock-track"><Artwork artwork={active?.artwork} /><div><strong>{title}</strong><small>{artist}</small></div><button type="button" aria-label="喜欢"><Heart size={18} /></button></div>
+      <div className="dock-track"><Artwork artwork={active?.artwork} /><div><strong>{title}</strong><small>{artist}</small></div><span className="dock-deck">DECK {activeDeck}</span></div>
       <div className="dock-transport">
-        <div className="transport-buttons"><button type="button" aria-label="上一首"><SkipBack /></button><button className="play-main" type="button" aria-label="播放或暂停" onClick={() => void toggle()}>{deck.playing ? <Pause /> : <Play />}</button><button type="button" aria-label="下一首"><SkipForward /></button></div>
-        <div className="dock-progress"><span>{formatTime(deck.position)}</span><div><Waveform compact progress={progress} /><input aria-label="播放进度" type="range" min={0} max={deck.duration || 1} step={0.1} value={deck.position} onChange={(event) => getMixer().decks.A.seek(Number(event.target.value))} /></div><span>{formatTime(deck.duration)}</span></div>
+        <div className="transport-buttons"><button type="button" aria-label="上一首" disabled={!tracks.length} onClick={() => skip(-1)}><SkipBack /></button><button className="play-main" type="button" aria-label="播放或暂停" onClick={() => void toggle()}>{deck.playing ? <Pause /> : <Play />}</button><button type="button" aria-label="下一首" disabled={!tracks.length} onClick={() => skip(1)}><SkipForward /></button></div>
+        <div className="dock-progress"><span>{formatTime(deck.position)}</span><div><Waveform compact progress={progress} /><input aria-label="播放进度" type="range" min={0} max={deck.duration || 1} step={0.1} value={deck.position} onChange={(event) => getMixer().decks[activeDeck].seek(Number(event.target.value))} /></div><span>{formatTime(deck.duration)}</span></div>
       </div>
       <div className="dock-volume"><ListMusic size={18} /><Volume2 size={18} /><input aria-label="主音量" type="range" min={0} max={1} step={0.01} value={volume} onChange={(event) => updateVolume(Number(event.target.value))} /></div>
     </footer>

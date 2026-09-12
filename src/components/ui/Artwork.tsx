@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 export function Artwork({ artwork, className = '' }: { artwork?: Blob; className?: string }) {
   const [url, setUrl] = useState<string>();
   useEffect(() => {
-    if (!artwork) return;
+    if (!artwork) { setUrl(undefined); return; }
     const next = URL.createObjectURL(artwork);
     setUrl(next);
     return () => URL.revokeObjectURL(next);

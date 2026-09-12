@@ -1,30 +1,40 @@
-import { useEffect, useRef } from 'react';
-import { getMixer } from '../../audio/engine/runtime';
+import { useEffect, useRef, useState } from 'react';
+import { peekMixer } from '../../audio/engine/runtime';
 import { nebulaPreset } from '../../presets/nebula';
 import { gravityPreset } from '../../presets/gravity';
 import { bloomPreset } from '../../presets/bloom';
 import { PresetRegistry } from '../../presets/registry';
 import { UniverseRenderer } from '../../rendering/UniverseRenderer';
 import { AppState } from '../../state/AppState';
+import { usePreferences } from '../../stores/usePreferences';
+import { CanvasVisualizer } from './CanvasVisualizer';
+import type { AudioFrame } from '../../types';
 
 export function UniverseStage({ preset }: { preset: 'nebula' | 'gravity' | 'bloom' }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const [fallback, setFallback] = useState(false);
+  const reduced = usePreferences((state) => state.reducedMotion);
   useEffect(() => {
     const canvas = ref.current;
-    if (!canvas) return;
+    if (!canvas || fallback) return;
     const registry = new PresetRegistry();
-    registry.register(nebulaPreset);
-    registry.register(gravityPreset);
-    registry.register(bloomPreset);
+    registry.register(nebulaPreset); registry.register(gravityPreset); registry.register(bloomPreset);
     const state = new AppState();
-    const renderer = new UniverseRenderer(canvas, registry, state);
-    renderer.onFrame = () => {
-      const frame = getMixer().frame();
-      return { ...frame, transient: frame.beatPulse };
-    };
-    renderer.setPreset(preset);
-    renderer.start();
-    return () => renderer.dispose();
-  }, [preset]);
-  return <canvas className="visual-canvas" ref={ref} />;
+    const media = matchMedia('(prefers-reduced-motion: reduce)');
+    const apply = () => { state.reducedMotion = reduced || media.matches; };
+    apply(); media.addEventListener('change', apply);
+    let renderer: UniverseRenderer | undefined;
+    try {
+      renderer = new UniverseRenderer(canvas, registry, state);
+      const frame: AudioFrame = { frequencyBins: new Uint8Array(512), timeDomain: new Uint8Array(1024).fill(128), bass: 0, mid: 0, treble: 0, rms: 0, beatPulse: 0, transient: 0 };
+      renderer.onFrame = () => {
+        const live = peekMixer()?.frame();
+        if (live) Object.assign(frame, live, { transient: live.beatPulse });
+        return frame;
+      };
+      renderer.setPreset(preset); renderer.start();
+    } catch { renderer?.dispose(); setFallback(true); }
+    return () => { media.removeEventListener('change', apply); renderer?.dispose(); };
+  }, [preset, reduced, fallback]);
+  return fallback ? <CanvasVisualizer mode="peak" /> : <canvas className="visual-canvas" aria-label="交互式三维音乐宇宙" ref={ref} />;
 }

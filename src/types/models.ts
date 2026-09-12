@@ -2,6 +2,14 @@ export type DeckId = 'A' | 'B';
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type AppView = 'discover' | 'library' | 'playlists' | 'dj' | 'visuals' | 'settings';
 
+export interface BeatGrid {
+  bpm: number;
+  firstBeat: number;
+  confidence: number;
+  source: 'analysis' | 'manual' | 'demo';
+  version: number;
+}
+
 export interface Track {
   id: string;
   title: string;
@@ -41,9 +49,16 @@ export interface DeckSnapshot {
   mid: number;
   high: number;
   filter: number;
+  effects: { delay: number; reverb: number; flanger: number };
   loopBeats: number;
   loopEnabled: boolean;
   reverse: boolean;
+  status: 'empty' | 'loading' | 'ready' | 'error';
+  error?: string;
+  grid?: BeatGrid;
+  analysisPending: boolean;
+  cues: Array<number | null>;
+  revision: number;
 }
 
 export interface VisualizerFrame {
