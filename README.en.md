@@ -18,7 +18,7 @@ React + TypeScript + Web Audio API + Canvas / Three.js + Zustand + Dexie.
 
 | Home | DJ console | Mobile |
 |:---:|:---:|:---:|
-| ![Home](docs/preview-home.png) | ![DJ console](docs/preview-dj.png) | ![Mobile](docs/preview-mobile.png) |
+| ![Home](docs/images/preview-home.png) | ![DJ console](docs/images/preview-dj.png) | ![Mobile](docs/images/preview-mobile.png) |
 
 Screenshots come from `scripts/capture-preview.mjs`; the tracks shown are generated test audio, not a real library.
 
@@ -39,7 +39,7 @@ npm run preview
 node scripts/verify-production.mjs
 ```
 
-Set `MU_BROWSER=chrome` to run the same suite in an installed Chrome or Edge. The multi-engine suite needs `npx playwright install firefox webkit` first. Note that Playwright's WebKit build on Windows ships without Web Audio, so WebKit only runs the shell, offline and degradation specs.
+The multi-engine suite needs `npx playwright install firefox webkit` first. Note that Playwright's WebKit build on Windows ships without Web Audio, so WebKit only runs the shell, offline and degradation specs.
 
 ## Features
 
@@ -108,26 +108,20 @@ Canvas / Three.js       RhythmSession ← TransportClock / BeatGrid
 LibraryRepository → Dexie v3 ← beat analysis Worker
 ```
 
-Data flows one way: the UI only issues commands and subscribes to serialisable snapshots. Per-frame data — audio frames, pointer coordinates — never enters React state.
+Data flows one way: the UI only issues commands and subscribes to serialisable snapshots. Per-frame data — audio frames, pointer coordinates — **never enters React state**; it travels on a separate rendering path.
 
-- `src/styles/` — layered tokens, layout, components, pages and dj styles; never appended overrides at the end of an older file.
-- `src/rendering/` — the render loop and post-processing pipeline; `GradePass.ts` is the colour-grade shader.
-- `src/presets/` — original presets. A new preset implements `UniversePreset` and registers once in `src/presets/index.ts`; allocate on create, reuse on update, release geometry / material on dispose.
-- `src/audio/engine/` — audio nodes, the integrating transport clock, and sync maths.
-- `src/audio/audioMath.ts` — per-frame signal maths (band averages, RMS, transients, BPM normalisation and rate). Pure functions, no side effects.
-- `src/audio/analysis/` — worker-driven background beat and waveform analysis. A **different layer** from `audioMath.ts` above.
-- `src/audio/keylock/` — key lock. `keyLockMath` is pure and decides clock rate and worklet pitch; `worklet.ts` **must import SoundTouch dynamically**, because the package extends `AudioWorkletNode` at module scope and a static import would white-screen unsupported browsers before React mounts.
-- `src/components/rhythm-game/` — the testable judgement kernel and the canvas stage.
-- `src/components/ui/AmbientField.tsx` — a background effect that never intercepts input; its coordinates don't enter Zustand.
-- `src/components/player/NowPlaying.tsx` — the now-playing screen. The outer component subscribes only to the `nowPlaying` flag; the inner one subscribes to the per-frame snapshot. Otherwise it would re-render five times a second while hidden.
-- `src/data/` — the persistence boundary. `LibraryRepository.ts` is the interface (port), `WebLibraryRepository.ts` the Dexie v3 implementation (adapter); audio assets never enter the UI store. Dexie is at v3 and every upgrade preserves existing library data.
-- `src/library/collection.ts` — pure functions for favourites / history / sleep timer (dedupe, promote, cap, prune). Its split from `src/data/` is "rules" versus "persistence".
-- `src/playlists/` — `playlistMath` holds the pure ordering / dedupe / play-mode and shuffle rules; `queue.ts` handles continuous playback and natural-end continuation. `handleTrackEnd` is the single entry point and covers both "there is a queue" and "replay one track".
-- `src/lyrics/` — `lrc.ts` normalises every container format to LRC and parses it (`parseLrc` / `activeLineIndex` / `lineProgress` are all pure), `useLyrics.ts` reads and caches.
-- `src/theme/` — `palette.ts` is pure colour maths (bucket the dominant colour, `ensureContrast` to pass, `buildPalette` to emit four tokens); `artworkTheme.ts` writes CSS variables; `useArtworkPalette.ts` only draws the cover into a canvas to read pixels.
-- `src/types/` — types split by domain. `models.ts` is the **data domain** (Track / Playlist / DeckSnapshot); `visuals.ts` is the **rendering / interaction domain** (AudioFrame / InteractionFrame / UniversePreset).
-- `src/state/AppState.ts` — a 13-line mutable singleton that is **deliberate, not legacy**. It carries sensitivity, hue and reduced-motion for the render loop, letting it bypass React re-renders; coordinates never go into Zustand. Long-lived UI state belongs in `src/stores/`.
-- `src/audio/engine/loadTrack.ts` — the shared entry point for loading from the library, used by both the UI and the playback queue to avoid races and duplicate audio unlocking.
+| Directory | Responsibility |
+|---|---|
+| `src/app/` `src/pages/` `src/components/` `src/styles/` | UI, routing and layered styles |
+| `src/hooks/` `src/stores/` `src/state/` | Command layer and state |
+| `src/audio/` | Audio engine, beat analysis, key lock |
+| `src/rendering/` `src/presets/` `src/interaction/` | 3D rendering, visual presets, pointer input |
+| `src/data/` `src/library/` `src/playlists/` `src/lyrics/` `src/theme/` | Persistence and pure rules |
+| `src/types/` | Types split by domain (`models` data / `visuals` rendering) |
+
+Two things are worth calling out because they are easy to misread: `src/audio/audioMath.ts` and `src/audio/analysis/` are **different layers** — the first is per-frame signal maths the engine calls, the second is worker-side beat analysis; and `src/state/AppState.ts` is a **deliberate** mutable singleton, not legacy. It carries per-frame data so the render loop bypasses React re-renders, while long-lived UI state belongs in `src/stores/`.
+
+**Design rationale, concrete parameter values, migration strategy and boundary conditions live in [docs/design/](docs/design/)** — start with [Architecture](docs/design/architecture.md). Those documents are currently written in Chinese.
 
 ## Local visual review
 

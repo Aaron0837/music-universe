@@ -18,7 +18,7 @@ React + TypeScript + Web Audio API + Canvas / Three.js + Zustand + Dexie。
 
 | 首页 | DJ 台 | 移动端 |
 |:---:|:---:|:---:|
-| ![首页](docs/preview-home.png) | ![DJ 台](docs/preview-dj.png) | ![移动端](docs/preview-mobile.png) |
+| ![首页](docs/images/preview-home.png) | ![DJ 台](docs/images/preview-dj.png) | ![移动端](docs/images/preview-mobile.png) |
 
 截图来自 `scripts/capture-preview.mjs`，曲目为脚本生成的测试音频，不是用户曲库。
 
@@ -39,7 +39,7 @@ npm run preview
 node scripts/verify-production.mjs
 ```
 
-安装了 Chrome / Edge 时可设置 `MU_BROWSER=chrome` 运行相同测试；多引擎套件需先 `npx playwright install firefox webkit`。注意 Playwright 的 Windows WebKit 不含 Web Audio，故 WebKit 只跑外壳、离线与降级用例。
+多引擎套件需先 `npx playwright install firefox webkit`。注意 Playwright 的 Windows WebKit 不含 Web Audio，故 WebKit 只跑外壳、离线与降级用例。
 
 ## 功能特性
 
@@ -108,26 +108,20 @@ Canvas / Three.js       RhythmSession ← TransportClock / BeatGrid
 LibraryRepository → Dexie v3 ← beat analysis Worker
 ```
 
-数据流是单向的：UI 只发命令与订阅可序列化的快照，音频帧与坐标这类每帧数据不进 React 状态。
+数据流是单向的：UI 只发命令与订阅可序列化的快照。音频帧与指针坐标这类每帧数据**不进 React 状态**，它们走独立的渲染通道。
 
-- `src/styles/`：tokens、layout、components、pages、dj 分层；不在旧样式末尾堆叠覆盖。
-- `src/rendering/`：渲染循环与后处理管线；`GradePass.ts` 是调色着色器。
-- `src/presets/`：原创预设。新增预设实现 `UniversePreset`，在 `src/presets/index.ts` 注册一次；创建时分配，更新时复用，销毁时释放 geometry / material。
-- `src/audio/engine/`：音频节点、积分播放时钟、同步数学。
-- `src/audio/audioMath.ts`：逐帧信号数学（频段均值、RMS、瞬态、BPM 归一与速率）。纯函数，无副作用。
-- `src/audio/analysis/`：Worker 驱动的后台拍点与波形分析。与上面的 `audioMath.ts` 是**不同层次**的职责。
-- `src/audio/keylock/`：保调变速。`keyLockMath` 纯函数决定时钟速率与 worklet 音高；`worklet.ts` **必须动态 import** SoundTouch——该包在模块顶层继承 `AudioWorkletNode`，静态引入会让不支持的浏览器在 React 挂载前白屏。
-- `src/components/rhythm-game/`：可测试判定内核与 Canvas 舞台。
-- `src/components/ui/AmbientField.tsx`：不拦截输入的背景效果，坐标不进 Zustand。
-- `src/components/player/NowPlaying.tsx`：播放大屏。外层只订阅 `nowPlaying` 开关，内层才订阅每帧快照——否则隐藏时也会每秒重渲染五次。
-- `src/data/`：持久化边界。`LibraryRepository.ts` 是接口（端口），`WebLibraryRepository.ts` 是 Dexie v3 实现（适配器）；音频资源不进入 UI store。Dexie 已到 v3，每次升级都保留旧曲库数据。
-- `src/library/collection.ts`：喜欢 / 最近播放 / 睡眠定时的纯函数（去重、置顶、上限、修剪）。与 `src/data/` 的分工是"规则"与"落盘"。
-- `src/playlists/`：`playlistMath` 是纯排序 / 去重 / 播放模式与洗牌规则，`queue.ts` 负责连放与自然播完的续播；`handleTrackEnd` 是唯一入口，同时处理"有队列"和"单曲重播"两种情况。
-- `src/lyrics/`：`lrc.ts` 把各容器格式统一成 LRC 再解析（`parseLrc` / `activeLineIndex` / `lineProgress` 都是纯函数），`useLyrics.ts` 负责读取与缓存。
-- `src/theme/`：`palette.ts` 是纯色math（分桶取主色、`ensureContrast` 拉到达标、`buildPalette` 出四个 token），`artworkTheme.ts` 写 CSS 变量，`useArtworkPalette.ts` 只负责把封面画进 canvas 取像素。
-- `src/types/`：类型按域分文件。`models.ts` 是**数据域**（Track / Playlist / DeckSnapshot），`visuals.ts` 是**渲染 / 交互域**（AudioFrame / InteractionFrame / UniversePreset）。
-- `src/state/AppState.ts`：一个 13 行的可变单例，**是故意的，不是遗留代码**。它承载敏感度、色相、减少动态效果等每帧数据，让渲染循环绕过 React 重渲染；坐标永不进 Zustand。生命周期长的 UI 状态才放 `src/stores/`。
-- `src/audio/engine/loadTrack.ts`：曲库载入的共用入口，UI 与播放队列都走它，避免竞态与重复解锁音频。
+| 目录 | 职责 |
+|---|---|
+| `src/app/` `src/pages/` `src/components/` `src/styles/` | 界面、路由与样式分层 |
+| `src/hooks/` `src/stores/` `src/state/` | 命令层与状态 |
+| `src/audio/` | 音频引擎、拍点分析、保调变速 |
+| `src/rendering/` `src/presets/` `src/interaction/` | 三维渲染、可视化预设、指针输入 |
+| `src/data/` `src/library/` `src/playlists/` `src/lyrics/` `src/theme/` | 持久化与纯规则 |
+| `src/types/` | 类型，按域分文件（`models` 数据 / `visuals` 渲染） |
+
+两处容易误读的地方值得单独点出：`src/audio/audioMath.ts` 与 `src/audio/analysis/` 是**不同层次**——前者是引擎每帧调用的信号数学，后者是后台 Worker 里的拍点分析；`src/state/AppState.ts` 是**故意的**可变单例而非遗留代码，它承载每帧数据让渲染循环绕过 React 重渲染，生命周期长的 UI 状态才放 `src/stores/`。
+
+**设计理由、具体参数值、迁移策略与边界条件都写在 [docs/design/](docs/design/)** —— 建议从[架构](docs/design/architecture.md)开始读。
 
 ## 本地视觉审阅
 
