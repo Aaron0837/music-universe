@@ -1,13 +1,17 @@
 // Rasterises the source SVG into the PNG sizes browsers and iOS require.
 // Chromium does the rendering, so the icons match the browser's own antialiasing.
 import { chromium } from '@playwright/test';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const source = resolve('assets/icon.svg');
 const output = resolve('public/icons');
 const svg = await readFile(source, 'utf8');
 await mkdir(output, { recursive: true });
+// 浏览器实际加载的是 public/icon.svg（见 index.html），它与 assets/ 里的源本来
+// 是两份手工同步的相同文件。这里从同一个源写出去，改源文件就不会漏掉副本。
+await writeFile(resolve('public/icon.svg'), svg, 'utf8');
+console.log('wrote', 'icon.svg');
 
 const targets = [
   { file: 'icon-192.png', size: 192 },

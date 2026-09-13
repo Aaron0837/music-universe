@@ -1,0 +1,63 @@
+name: 功能建议
+description: 提议一个新功能或改进
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢提议。这个项目对"要做什么"有明确取舍，所以**说清你要解决的问题比说清你想加的功能更有用** —— 也许已有更轻的做法。
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索过现有 issue 与 Discussions，没有发现重复
+          required: true
+        - label: 我理解本项目**纯本地运行、不接入服务端**，不会提议需要云端才能实现的功能
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你想解决什么问题？
+      description: 描述你遇到的困难或不便，而不是直接描述解决方案。
+      placeholder: 我经常想把同一个歌单按不同顺序存两份，现在只能手动重排。
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 你设想的做法
+      description: 可选。如果你对实现方式有想法可以写在这里。
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 涉及的功能区域
+      multiple: true
+      options:
+        - 曲库与导入
+        - 播放器
+        - DJ 台
+        - 保调变速（Key Lock）
+        - 音游 / Beat Garden
+        - 可视化 / 新预设
+        - 主题与封面取色
+        - 歌词
+        - 播放列表
+        - 无障碍与键盘操作
+        - 性能与包体
+        - 其他
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: 你是否愿意自己实现
+      options:
+        - label: 我愿意提交 PR

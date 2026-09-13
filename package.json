@@ -1,8 +1,26 @@
 {
   "name": "music-universe",
   "version": "1.0.0",
+  "description": "现代音乐播放器、双 Deck DJ 台与实时音乐可视化。纯本地 PWA，音乐与分析结果只存在浏览器里。",
   "private": true,
+  "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Aaron0837/music-universe.git"
+  },
+  "homepage": "https://aaron0837.github.io/music-universe/",
+  "author": "Aaron0837",
+  "keywords": [
+    "music-player",
+    "dj",
+    "web-audio",
+    "audio-worklet",
+    "pwa",
+    "three.js",
+    "react",
+    "indexeddb"
+  ],
   "scripts": {
     "dev": "vite --configLoader runner",
     "build": "tsc -b && vite build",

@@ -1,0 +1,96 @@
+name: Bug 报告
+description: 报告一个可复现的问题
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请尽量填完整 —— 音频与可视化的问题很难靠文字描述复现。
+
+        ⚠️ **安全漏洞请不要用这个表单**，请改用 [私密举报通道](https://github.com/Aaron0837/music-universe/security/advisories/new)。
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索过现有 issue，没有发现重复
+          required: true
+        - label: 这是 bug，不是使用问题或功能请求
+          required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 现象
+      description: 实际发生了什么？你期望发生什么？
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 导入一个 MP3
+        2. 打开 DJ 页
+        3. 拖动 Deck A 的 BPM 旋钮到 140
+        4. 观察到 ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: 浏览器
+      description: 如果问题只在某个引擎上出现，这一项是定位关键 —— 本项目的音频路径在 Chromium / Firefox / WebKit 上行为有差异。
+      options:
+        - Chrome
+        - Edge
+        - Firefox
+        - Safari
+        - 其他 Chromium 内核浏览器
+        - 其他
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: 操作系统
+      placeholder: Windows 11 / macOS 15 / Ubuntu 24.04 / iOS 18 / Android 15
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 涉及的功能区域
+      multiple: true
+      options:
+        - 曲库与导入
+        - 播放器
+        - DJ 台
+        - 保调变速（Key Lock）
+        - 音游 / Beat Garden
+        - 可视化
+        - 主题与封面取色
+        - 歌词
+        - 播放列表
+        - PWA 与离线
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: 控制台输出
+      description: 打开开发者工具的 Console 面板，粘贴相关报错。没有可留空。
+      render: shell
+
+  - type: input
+    id: track
+    attributes:
+      label: 触发问题的音频格式
+      description: 如果问题与特定文件有关，说明其格式与编码（如 FLAC 24bit/96kHz）。**请不要上传受版权保护的音乐文件。**

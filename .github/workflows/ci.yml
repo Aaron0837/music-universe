@@ -1,0 +1,29 @@
+name: CI
+
+# deploy.yml 只在 push 到 main 时触发，因此**来自 fork 的 PR 不会执行任何检查**。
+# 这个工作流补上 PR 的门禁：单元测试 + 类型检查 + 生产构建。
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # 135 个单元测试，约 2 秒。
+      - run: npm test
+      # build 是 `tsc -b && vite build`，所以这一步同时覆盖类型检查。
+      - run: npm run build

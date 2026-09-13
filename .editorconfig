@@ -1,0 +1,25 @@
+# 与 .gitattributes 的 `* text=auto eol=lf` 保持一致：
+# 仓库内与工作区都使用 LF，避免 Windows 上 core.autocrlf 反复改写文件。
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.md]
+# Markdown 里行尾两个空格是合法的换行语法，不能裁掉。
+trim_trailing_whitespace = false
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.{png,jpg,jpeg,webp,ico,woff2,webm}]
+# 二进制文件不做任何文本处理。
+charset = unset
+end_of_line = unset
+insert_final_newline = unset
+trim_trailing_whitespace = unset

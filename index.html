@@ -3,14 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f5f5f7" />
+    <meta name="theme-color" content="#f7f9f5" />
     <link rel="icon" type="image/svg+xml" href="./icon.svg" />
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Music Universe" />
-    <meta name="description" content="Music Universe — 现代音乐播放器、双 Deck DJ 台与实时音乐可视化。" />
+    <meta name="description" content="Music Universe — 现代音乐播放器、双 Deck DJ 台与实时音乐可视化。音乐只存在你的浏览器里。" />
     <title>Music Universe</title>
+
+    <!-- 分享卡片。og:image 必须是绝对 URL，且指向部署后真实存在的路径；
+         docs/ 不在 public/ 里，不随构建发布，所以走 raw.githubusercontent。 -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Music Universe" />
+    <meta property="og:title" content="Music Universe" />
+    <meta property="og:description" content="现代音乐播放器、双 Deck DJ 台与实时音乐可视化。音乐只存在你的浏览器里，不上传、不接入遥测。" />
+    <meta property="og:url" content="https://aaron0837.github.io/music-universe/" />
+    <meta property="og:image" content="https://raw.githubusercontent.com/Aaron0837/music-universe/main/docs/preview-home.png" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
     <div id="root"></div>
