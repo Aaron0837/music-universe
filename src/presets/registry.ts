@@ -1,4 +1,4 @@
-import type { UniversePreset } from '../types';
+import type { UniversePreset } from '../types/visuals';
 
 export class PresetRegistry {
   private presets = new Map<string, UniversePreset>();

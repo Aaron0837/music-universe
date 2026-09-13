@@ -5,7 +5,7 @@ import { UniverseRenderer } from '../../rendering/UniverseRenderer';
 import { AppState } from '../../state/AppState';
 import { usePreferences } from '../../stores/usePreferences';
 import { CanvasVisualizer } from './CanvasVisualizer';
-import type { AudioFrame } from '../../types';
+import type { AudioFrame } from '../../types/visuals';
 
 export type UniversePresetId = 'nebula' | 'gravity' | 'bloom' | 'tunnel' | 'aurora';
 

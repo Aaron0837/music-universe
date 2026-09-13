@@ -1,4 +1,4 @@
-import type { AudioFrame } from '../types';
+import type { AudioFrame } from '../types/visuals';
 
 export class FallbackRenderer {
   private context: CanvasRenderingContext2D;

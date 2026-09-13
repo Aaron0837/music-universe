@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { UniversePreset } from '../../types';
+import type { UniversePreset } from '../../types/visuals';
 import { disposeObject, seeded } from '../shared';
 
 /**

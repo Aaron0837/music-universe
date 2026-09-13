@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { InteractionFrame } from '../types';
+import type { InteractionFrame } from '../types/visuals';
 
 export class InteractionController {
   readonly frame: InteractionFrame = { x: 0, y: 0, worldX: 0, worldY: 0, pressed: false, energy: 0, burst: 0, zoom: 1, reducedMotion: false };

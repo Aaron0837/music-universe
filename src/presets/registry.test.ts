@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PresetRegistry } from './registry';
-import type { UniversePreset } from '../types';
+import type { UniversePreset } from '../types/visuals';
 
 const preset = (id: string): UniversePreset => ({ id, name: id, description: '', author: '', create: () => ({ update() {}, resize() {}, reset() {}, dispose() {} }) });
 describe('PresetRegistry', () => {

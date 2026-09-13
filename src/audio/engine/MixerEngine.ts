@@ -1,5 +1,5 @@
 import type { DeckId, VisualizerFrame } from '../../types/models';
-import { averageBand, calculateRms } from '../analysis';
+import { averageBand, calculateRms } from '../audioMath';
 import { tempoForAudible } from '../keylock/keyLockMath';
 import { DeckEngine } from './DeckEngine';
 import { equalPowerGains } from './mixerMath';

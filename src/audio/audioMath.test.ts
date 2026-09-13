@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { averageBand, calculateRms, detectTransient, estimateSourceBpm, normalizeBpm, smooth, tempoRate } from './analysis';
+import { averageBand, calculateRms, detectTransient, estimateSourceBpm, normalizeBpm, smooth, tempoRate } from './audioMath';
 
 describe('audio analysis', () => {
   it('normalizes frequency bands to zero through one', () => {

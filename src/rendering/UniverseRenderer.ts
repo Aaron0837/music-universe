@@ -5,7 +5,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import type { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { createGradePass } from './GradePass';
-import type { AudioFrame, PresetInstance, Quality } from '../types';
+import type { AudioFrame, PresetInstance, Quality } from '../types/visuals';
 import type { AppState } from '../state/AppState';
 import type { PresetRegistry } from '../presets/registry';
 import { InteractionController } from '../interaction/InteractionController';
