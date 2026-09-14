@@ -4,8 +4,8 @@
 
 | 层 | 工具 | 规模 | 跑什么 |
 |---|---|---|---|
-| 单元 | Vitest（jsdom） | 12 个文件 / **135 个用例** | 纯函数与状态规则 |
-| 端到端 | Playwright | 7 个 spec / **39 个用例** | 真实浏览器里的音频、布局、离线 |
+| 单元 | Vitest（jsdom） | 13 个文件 / **151 个用例** | 纯函数、状态规则与数据层 |
+| 端到端 | Playwright | 7 个 spec / **40 个用例** | 真实浏览器里的音频、布局、离线 |
 
 职责划分很清楚：**单元测试断言"算得对不对"，端到端断言"整体跑不跑得起来"。**
 
@@ -24,6 +24,18 @@ src/playlists/playlistMath.ts    排序、去重、播放模式、洗牌排列
 它们都是**无副作用、不碰 AudioContext、不碰 DOM** 的函数。同一个原则也用在 `src/library/collection.ts`（收藏/历史/睡眠定时规则）、`src/lyrics/lrc.ts`（歌词解析）、`src/theme/palette.ts`（取色与对比度校正）。
 
 **把规则从副作用里剥出来，是这些函数存在的主要理由之一。** 例如 `keyLockMath.ts` 的 `resolveRates()` 只做算术，所以"开锁时时钟速率只含 tempo"这条断言不需要构造 `AudioContext` 就能验证——而 `AudioContext` 在 jsdom 里根本不存在。
+
+### 数据层：需要 IndexedDB 的地方
+
+`src/data/` 曾长期**零单元测试**——它既不纯，也不能在 jsdom 里直接跑（jsdom 没有 IndexedDB）。这个空白已补齐：`src/data/WebLibraryRepository.test.ts` 用 `fake-indexeddb` 提供 IndexedDB 实现，覆盖设置读写、歌单增删改查、歌词与 `hasLyrics` 同步、分析缓存的失效判定、删除的六表级联，以及 **v3→v4 迁移的数据完整性**。
+
+最后一条是 schema 改动的守门测试：用**历史 schema** 建库写入数据，再用当前 schema 打开，断言数据完整。它经过反向验证——把 v4 的 `tracks` 改成会删表的声明时它确实失败，不是空转的。
+
+三个实测出来的注意点：
+
+- `fake-indexeddb/auto` 只在数据层测试文件里 import，**不放进全局 setup**——其他测试不需要它。
+- `music-metadata` 必须用 `vi.mock` 替换，否则要准备真实音频字节才能驱动批量导入。
+- **`parseBlob` 与 `parseBuffer` 行为不同**：对无法识别的字节，前者返回空元数据（`container: undefined`）**而不抛错**，后者抛 `Failed to determine audio format`。在 Node 里用 `parseBuffer` 验证出来的结论不能直接搬到浏览器里的 `parseBlob`。
 
 Vitest 配置（`vite.config.ts`）：
 
@@ -53,11 +65,11 @@ projects: [
 
 **Playwright 在 Windows 上打包的 WebKit 不含 Web Audio。** `AudioContext`、`OfflineAudioContext`、`AudioWorkletNode` 在这个构建里全是 `undefined`。
 
-所以 WebKit 只跑两个 spec（离线与降级，共 4 个用例，其中离线的冷启动用例在 WebKit 上被 `test.skip` 跳过，实际执行 3 个），其余 35 个在 Chromium 与 Firefox 上跑。
+所以 WebKit 只跑两个 spec（离线与降级，共 4 个用例，其中离线的冷启动用例在 WebKit 上被 `test.skip` 跳过，实际执行 3 个），其余 36 个在 Chromium 与 Firefox 上跑。
 
 | spec | 用例 | Chromium | Firefox | WebKit |
 |---|---|---|---|---|
-| `app.spec.ts` | 16 | ✓ | ✓ | — |
+| `app.spec.ts` | 17 | ✓ | ✓ | — |
 | `collection.spec.ts` | 10 | ✓ | ✓ | — |
 | `lyrics.spec.ts` | 5 | ✓ | ✓ | — |
 | `offline.spec.ts` | 2 | ✓ | ✓ | ✓ |

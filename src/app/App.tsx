@@ -122,9 +122,11 @@ export function App() {
       if (!files.length) return notify('请拖入 MP3、FLAC、WAV、M4A 或 OGG 文件');
       notify(`正在导入 ${files.length} 首音乐…`);
       try {
-        await libraryRepository.importFiles(files);
+        const outcome = await libraryRepository.importFiles(files);
+        // Refresh even on partial failure — the tracks that did land are already stored.
         setTracks(await libraryRepository.listTracks());
-        notify(`已导入 ${files.length} 首音乐`);
+        if (!outcome.failures.length) notify(`已导入 ${outcome.imported.length} 首音乐`);
+        else notify(`已导入 ${outcome.imported.length} 首，${outcome.failures.length} 首失败：${outcome.failures[0].reason}`);
       } catch (error) {
         notify(error instanceof Error ? error.message : '导入失败');
       }

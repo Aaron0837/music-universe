@@ -165,6 +165,27 @@ test('native file drop crosses decorative layer and internal track drop loads B'
   await expect(page.getByRole('status')).not.toContainText('请拖入');
 });
 
+test('an oversized file in a batch does not hide the ones that did import', async ({ page }) => {
+  await page.goto('/');
+  const file = audioFile('Readable Garden.wav');
+  const data = await page.evaluateHandle(({ bytes, name }) => {
+    const transfer = new DataTransfer();
+    transfer.items.add(new File([new Uint8Array(bytes)], name, { type: 'audio/wav' }));
+    // Over the 100 MB cap, so importFiles refuses it before reading any bytes.
+    transfer.items.add(new File([new Uint8Array(101 * 1024 * 1024)], 'Oversized Garden.wav', { type: 'audio/wav' }));
+    return transfer;
+  }, { bytes: [...file.buffer], name: file.name });
+  await page.locator('.hero-panel').dispatchEvent('drop', { dataTransfer: data });
+
+  // The batch reports the partial result instead of pretending it all worked.
+  await expect(page.getByRole('status')).toContainText('已导入 1 首，1 首失败');
+  // And the file that did import is in the library — before the fix it was written
+  // to IndexedDB but never refreshed into the list, so it stayed invisible.
+  await nav(page, '曲库');
+  await expect(page.getByText('Readable Garden', { exact: true })).toBeVisible();
+  await expect(page.getByText('Oversized Garden', { exact: true })).toHaveCount(0);
+});
+
 for (const width of [390, 768, 1440, 1920]) {
   test(`layout and core controls at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });

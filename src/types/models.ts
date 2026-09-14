@@ -29,7 +29,6 @@ export interface Track {
   size: number;
   artwork?: Blob;
   bpm?: number;
-  musicalKey?: string;
   genres?: string[];
   /** True when the file carried lyric text; the lyrics themselves live in their own table. */
   hasLyrics?: boolean;
